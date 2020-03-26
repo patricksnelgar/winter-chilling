@@ -15,30 +15,33 @@ library(tidyverse)
 
 ```{r data_import, echo=FALSE, include=FALSE}
 
-current_year <- as.integer(format(Sys.Date(), "%Y"))
-oldest_year <- current_year - 10
 met_data <- NULL
-# read in each file for each year and merge into a single data frame
-for (year in oldest_year:current_year) {
-	temp_year <-  read_csv(paste("//Tep-file/home$/HRTPXS/My Documents/Data/Metwatch/Yearly/MetWatch Export ", year, ".csv", sep=""), skip = 1, na = '-') %>%
+
+data_files <- list.files("../input/", "([0-9])\\.csv$")
+	# read in each file for each year and merge into a single data frame
+for (file in data_files) {
+	temp_year <-  read_csv(paste("../input/", file, sep = ""), skip = 1, na = '-') %>%
 					rename(temperature = 'Temperature Dry Bulb Mean') %>%
-					mutate(stop_date = parse_date_time(`Stop Date`, c("Ymd HMS",  "Ymd HM", "dmY HM", "dmY HMS")), 
+					mutate(stop_date = parse_date_time(`Stop Date`, c("Ymd HMS", "dmY HM", "dmY HMS")), 
 						   month = month(stop_date),
 						   year = year(stop_date), 
-						   doy = yday(stop_date)) %>%
-					filter(month > 4) %>%
-					   mutate(below_seven = ifelse(temperature < 7 & !is.na(temperature), 1, 0))
-				
+						   doy = yday(stop_date)) 
 				
 met_data %<>% bind_rows(., temp_year)
 
 }
 
+rm(temp_year)
+
 by_site <- met_data %>%
+			select(`Station ID`:doy) %>%
 			group_by(year, `Station ID`) %>%
+			filter((month > 4 & month < 10)) %>%
+			filter(!(`Station ID` == "TPK" & (row_number() %in% 2758:2913) & year == 2008)) %>% # removes 'dead' data 
+			mutate(below_seven = ifelse(temperature < 7 & !is.na(temperature), 1, 0)) %>%
 			mutate(chilling_hours = cumsum(below_seven))
 
-richardsonChillTable <- read.csv("RichardsonChillingTable.csv")
+richardsonChillTable <- read.csv("../input/RichardsonChillingTable.csv")
 
 
 # by_site %>% filter(`Station ID` == "KER") %>% tail() %>% select(stop_date, temperature, chilling_hours)
@@ -56,18 +59,18 @@ richardsonChillTable <- read.csv("RichardsonChillingTable.csv")
 # numeric tick points for x axis
 # only interested in data from April - October
 doy_ticks <- by_site%>%
-				filter(`Station ID` == "TPK" & (month > 4 & month < 10)) %$%
+				filter(`Station ID` == "TPK" & (month > 4 & month < 10) & year >= 2009) %$%
 				pretty(x = doy, n = 7)
 
 # labels for x axis ticks
 month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
 
 by_site %>% 
-	filter(`Station ID` == "TPK" & (month > 4 & month < 10) & !year == 2017) %>%
+	filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (!year == 2017 & year >= 2009)) %>%
 		ggplot() +
 			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
 			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
-			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+			scale_color_manual(values = c("red", "blue", "gold", "darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green",  "black")) + 
 			ggtitle("Cumulative chilling hours - Te Puke 2019") +
 			ylim(0,1000) + 
@@ -77,10 +80,10 @@ by_site %>%
 			guides(size = FALSE) + 
 			theme_bw()
 
-ggsave("Winter chilling - Te Puke 2019.png", width = 12, height = 8)
+ggsave("../output/Winter chilling - Te Puke 2019.png", width = 12, height = 8)
 
 by_site %>% 
-	filter(`Station ID` == "KER" & (month > 4 & month < 10)) %>%
+	filter(`Station ID` == "KER" & (month > 4 & month < 10) & year >= 2009) %>%
 		ggplot() +
 			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
 			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
@@ -95,6 +98,85 @@ by_site %>%
 			theme_bw()
 
 ggsave("Winter chilling - Kerikeri 2019.png", width = 12, height = 8)
+
+```
+
+```{r chilling_2018, include=FALSE}
+
+doy_ticks <- by_site%>%
+				filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %$%
+				pretty(x = doy, n = 7)
+
+# labels for x axis ticks
+month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+
+by_site %>% 
+	filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (!year == 2017 & (year >= 2008 & year < 2019))) %>%
+		ggplot() +
+			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
+			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold", "darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green",  "black")) + 
+			ggtitle("Cumulative chilling hours - Te Puke 2018") +
+			ylim(0,2000) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is exluded due to sensor error") + 
+			guides(size = FALSE) + 
+			theme_bw()
+
+ggsave("../output/Winter chilling - Te Puke 2018.png", width = 12, height = 8)
+
+by_site %>% 
+	filter(`Station ID` == "KER" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %>%
+		ggplot() +
+			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
+			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle("Cumulative chilling hours - Kerikeri 2018") +
+			ylim(0,1500) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
+			guides(size = FALSE) + 
+			theme_bw()
+
+ggsave("Winter chilling - Kerikeri 2019.png", width = 12, height = 8)
+
+
+```
+
+
+```{r budup_dates, echo = FALSE, include = FALSE}
+
+# G11
+
+early_g11 <- yday(ymd("2019/07/22"))
+mid_g11 <- yday(ymd("2019/08/01"))
+late_g11 <- yday(ymd("2019/08/07"))
+vLate_g11 <- yday(ymd("2019/09/16"))
+
+g11 <- data.frame(doy = c(early_g11, mid_g11, late_g11, vLate_g11))
+
+# R19
+
+early_r19 <- yday(ymd("2019/08/03"))
+mid_r19 <- yday(ymd("2019/08/15"))
+late_r19 <- yday(ymd("2019/08/21"))
+vLate_r19 <- yday(ymd("2019/08/29"))
+
+r19 <- data.frame(doy = c(early_r19, mid_r19, late_r19, vLate_r19))
+
+
+by_site %>% 
+	filter(`Station ID` == "TPK" & year == 2019 & doy %in% c(g11$doy, r19$doy)) %>%
+	group_by(doy) %>%
+	summarise(temp_max = max(temperature),
+			  temp_min = min(temperature),
+			  rainfall = sum(`Rain Total`)) %>%
+	mutate(date = as.Date(doy, origin = "2018/12/31"))
+	
 
 ```
 
