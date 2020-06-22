@@ -38,6 +38,8 @@ for (Year in oldest_Year:current_Year) {
 	met_data %<>% bind_rows(., temp_Year)
 }
 
+rm(temp_year)
+
 by_site <- met_data %>%
 			group_by(Year, StationID) %>%
 			mutate(ChillingHoursCumulative = cumsum(IsBelowSevenC))
@@ -52,10 +54,6 @@ richardsonChillTable <- read.csv("input/RichardsonChillingTable.csv")
 ```
 
 ```{r graphs, echo=FALSE}
-
-#met_data %>% filter(`Station ID` == "TPK") %>%
-#				ggplot() + 
-#					geom_line(aes(format(StopDate, "%m-%d"), temperature, colour = factor(Year)))
 
 # numeric tick points for x axis
 # only interested in data from April - October
@@ -82,6 +80,7 @@ by_site %>%
 			guides(size = FALSE) + 
 			theme_bw()
 
+
 ggsave(paste0("Winter chilling - Te Puke ", current_year, ".png"), width = 12, height = 8)
 
 by_site %>% 
@@ -99,25 +98,107 @@ by_site %>%
 			guides(size = FALSE) + 
 			theme_bw()
 
+
 ggsave(paste0("Winter chilling - Kerikeri ", current_year, ".png"), width = 12, height = 8)
+
+```
+
+```{r chilling_2018, include=FALSE}
+
+doy_ticks <- by_site%>%
+				filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %$%
+				pretty(x = doy, n = 7)
+
+# labels for x axis ticks
+month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+
+by_site %>% 
+	filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (!year == 2017 & (year >= 2008 & year < 2019))) %>%
+		ggplot() +
+			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
+			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold", "darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green",  "black")) + 
+			ggtitle("Cumulative chilling hours - Te Puke 2018") +
+			ylim(0,2000) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is exluded due to sensor error") + 
+			guides(size = FALSE) + 
+			theme_bw()
+
+ggsave("../output/Winter chilling - Te Puke 2018.png", width = 12, height = 8)
+
+by_site %>% 
+	filter(`Station ID` == "KER" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %>%
+		ggplot() +
+			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
+			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle("Cumulative chilling hours - Kerikeri 2018") +
+			ylim(0,1500) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
+			guides(size = FALSE) + 
+			theme_bw()
+
+ggsave("Winter chilling - Kerikeri 2019.png", width = 12, height = 8)
+
+
+```
+
+
+```{r budup_dates, echo = FALSE, include = FALSE}
+
+# G11
+
+early_g11 <- yday(ymd("2019/07/22"))
+mid_g11 <- yday(ymd("2019/08/01"))
+late_g11 <- yday(ymd("2019/08/07"))
+vLate_g11 <- yday(ymd("2019/09/16"))
+
+g11 <- data.frame(doy = c(early_g11, mid_g11, late_g11, vLate_g11))
+
+# R19
+
+early_r19 <- yday(ymd("2019/08/03"))
+mid_r19 <- yday(ymd("2019/08/15"))
+late_r19 <- yday(ymd("2019/08/21"))
+vLate_r19 <- yday(ymd("2019/08/29"))
+
+r19 <- data.frame(doy = c(early_r19, mid_r19, late_r19, vLate_r19))
+
+
+by_site %>% 
+	filter(`Station ID` == "TPK" & year == 2019 & doy %in% c(g11$doy, r19$doy)) %>%
+	group_by(doy) %>%
+	summarise(temp_max = max(temperature),
+			  temp_min = min(temperature),
+			  rainfall = sum(`Rain Total`)) %>%
+	mutate(date = as.Date(doy, origin = "2018/12/31"))
+	
 
 ```
 
 ```{r richardsonGraphs, echo = FALSE}
 
 by_site %>%
+
 	group_by(Year, `Station ID`) %>%
 	filter((Month > 4 & Month < 10) & `Station ID` == "TPK" & !is.na(temperature)) %>%
 	mutate(richardsonUnit = richardsonChillTable$value[findInterval(temperature , richardsonChillTable$RangeMax[-7])+1],
 		   richardsonChillingHours = cumsum(richardsonUnit)) %>%
 	ggplot() +  
-		geom_line(aes(DayOfYear, richardsonChillingHours, colour = factor(Year))) + 
+		geom_line(aes(DayOfYear, richardsonChillingHours, colour = factor(Year))) 
 		labs(colour = "Year") + 
 		ggtitle("Richardson Chilling hours - Te Puke")
 		
 #ggsave("Graphs/Richardson Chilling hours - Te Puke.png", width = 12, height = 8)
 
 by_site %>%
+
 	group_by(Year, `Station ID`) %>%
 	filter((Month > 4 & Month < 10) & `Station ID` == "KER" & !is.na(temperature)) %>%
 	mutate(richardsonUnit = richardsonChillTable$value[findInterval(temperature , richardsonChillTable$RangeMax[-7])+1],
