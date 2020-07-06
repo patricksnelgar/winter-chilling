@@ -76,7 +76,7 @@ by_site %>%
 			ylim(0,1000) + 
 			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is exluded due to sensor error") + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
@@ -123,7 +123,7 @@ by_site %>%
 			ylim(0,2000) + 
 			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is exluded due to sensor error") + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
