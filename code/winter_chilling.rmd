@@ -21,8 +21,8 @@ met_data <- NULL
 # read in each file for each Year and merge into a single data frame
 for (year in oldest_year:current_year) {
 	temp_year <-  
-		read_csv(paste("//Tep-file/home$/HRTPXS/My Documents/Data/Metwatch/Yearly/MetWatch Export ", year, ".csv", sep=""), 
-				 na = '-') %>%
+		read_csv(paste("//tep-file/home$/HRTPXS/My Documents/Data/Metwatch/Yearly/MetWatch Export ", year, ".csv", sep=""), 
+				 na = c('-','-0','--')) %>%
 		rename(StationID = 1, StartDate = 2,
 			   StopDate = 3, TemperatureMean = 4, 
 			   RelativeHumidityMean = 5, RainTotal = 6,
@@ -73,7 +73,7 @@ by_site %>%
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green",  "black")) + 
 			ggtitle(paste("Cumulative chilling hours - Te Puke", current_year)) +
-			ylim(0,1000) + 
+			ylim(0,1700) + 
 			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
@@ -91,7 +91,7 @@ by_site %>%
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
 			ggtitle(paste("Cumulative chilling hours - Kerikeri", current_year)) +
-			ylim(0,1000) + 
+			ylim(0,1700) + 
 			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
@@ -100,6 +100,25 @@ by_site %>%
 
 
 ggsave(paste0("output/Winter chilling - Kerikeri ", current_year, ".png"), width = 12, height = 8)
+
+
+by_site %>% 
+	filter(StationID == "RIR" & (Month > 4 & Month < 10)) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle(paste("Cumulative chilling hours - Riwaka", current_year)) +
+			ylim(0,1700) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
+			guides(size = FALSE) + 
+			theme_bw()
+
+
+ggsave(paste0("output/Winter chilling - Riwaka ", current_year, ".png"), width = 12, height = 8)
 
 ```
 
