@@ -11,6 +11,13 @@ library(lubridate)
 library(magrittr)
 library(scales)
 library(tidyverse)
+library(here)
+
+if(!dir.exists(here("output"))) {
+	dir.create(here("output"))
+}
+
+source(here("code/plot-themes.R"))
 ```
 
 ```{r data_import, echo=FALSE, include=FALSE}
@@ -20,7 +27,7 @@ oldest_year <- current_year - 10
 met_data <- NULL
 
 met_data <-  
-	read_csv("//tep-file/home$/HRTPXS/My Documents/Data/Metwatch/Yearly/MetWatch Export.csv", 
+	read_csv(here("input/MetWatch Export.csv"), 
 			 na = c('-',NA)) %>%
 	rename(StationID = 1, StartDate = 2,
 		   StopDate = 3, TemperatureMean = 4, 
@@ -45,6 +52,21 @@ richardsonChillTable <- read.csv("input/RichardsonChillingTable.csv")
 # 
 # by_site %>% filter(Year == 2019 & Month > 3) %>% select(StopDate, temperature, chilling_hours)
 
+
+# Check for missing data
+met_data %>%
+	group_by(StationID) %>%
+	filter(year(StopDate) == current_year) %>%
+	summarise(d = diff(hour(StopDate))) %>%
+	filter(d != 1 & d != -23) %>%
+	knitr::kable()
+
+met_data %>%
+	group_by(StationID) %>%
+	filter(year(StopDate) == current_year) %>%
+	summarise(d = c(NA, diff(yday(StopDate))), date = StopDate) %>%
+	filter(d > 1 | d < 0) %>%
+	knitr::kable()
 ```
 
 ```{r graphs, echo=FALSE}
@@ -119,14 +141,14 @@ ggsave(paste0("output/Winter chilling - Riwaka ", current_year, ".png"), width =
 ```{r chilling_2018, include=FALSE}
 
 doy_ticks <- by_site%>%
-				filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %$%
+				filter(StationID == "TPK" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %$%
 				pretty(x = doy, n = 7)
 
 # labels for x axis ticks
 month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
 
 by_site %>% 
-	filter(`Station ID` == "TPK" & (month > 4 & month < 10) & (!year == 2017 & (year >= 2008 & year < 2019))) %>%
+	filter(StationID == "TPK" & (month > 4 & month < 10) & (!year == 2017 & (year >= 2008 & year < 2019))) %>%
 		ggplot() +
 			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
 			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
@@ -223,7 +245,52 @@ by_site %>%
 
 ```
 
-```{r}
+```{r, hc-alt-2020, include=FALSE}
 
+doy_ticks <- 
+	by_site%>%
+	filter(StationID == "TPK" & (Month > 4 & Month < 10)) %$%
+	pretty(x = DayOfYear, n = 7)
+
+# labels for x axis ticks
+month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+
+tpk_2020_graph <- 
+	by_site %>% 
+	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year > 2010 & !Year == 2017) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 8), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "brown", "purple",
+										  "forestgreen", "darkturquoise",  "black")) + 
+			ggtitle("Cumulative chilling hours - Te Puke 2020") +
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_y_continuous(breaks = seq(0, 1000, 100), limits = c(0,1000),
+							   expand = c(0,0)) +
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
+			guides(size = FALSE) + 
+			publish_theme()
+
+
+ggsave(here("output/Winter chilling (HC-alt) - Te Puke 2020.png"), tpk_2020_graph, width = 12, height = 8)
+
+ker_2020_graph <- 
+	by_site %>% 
+	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year > 2010) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "brown", "purple",
+										  "forestgreen", "darkturquoise", "hotpink",  "black")) + 
+			ggtitle("Cumulative chilling hours - Kerikeri 2020") +
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_y_continuous(breaks = seq(0, 1000, 100), limits = c(0,1000),
+							   expand = c(0,0)) +
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
+			guides(size = FALSE) + 
+			publish_theme()
+
+
+ggsave(here("output/Winter chilling (HC-alt) - Kerikeri 2020.png"), ker_2020_graph, width = 12, height = 8)
 
 ```
