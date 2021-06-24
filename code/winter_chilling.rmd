@@ -45,7 +45,7 @@ by_site <- met_data %>%
 			group_by(Year, StationID) %>%
 			mutate(ChillingHoursCumulative = cumsum(IsBelowSevenC))
 
-richardsonChillTable <- read.csv("input/RichardsonChillingTable.csv")
+richardsonChillTable <- read.csv(here("input/RichardsonChillingTable.csv"))
 
 
 # by_site %>% filter(`Station ID` == "KER") %>% tail() %>% select(StopDate, temperature, chilling_hours)
@@ -292,5 +292,37 @@ ker_2020_graph <-
 
 
 ggsave(here("output/Winter chilling (HC-alt) - Kerikeri 2020.png"), ker_2020_graph, width = 12, height = 8)
+
+```
+
+
+```{r rainfall}
+
+# Select only june data
+june_rainfall <- 
+	met_data %>%
+	filter(month(StopDate) == 6) %>%
+	group_by(StationID, year(StopDate))
+	
+# How many 
+june_rainfall %>%
+	summarise(n = n() / 24)
+
+june_rainfall %<>%
+	filter(n() / 24 == 30 | year(StopDate) == current_year) %>%
+	group_by(StationID, year(StopDate)) %>%
+	summarise(rainfall = sum(RainTotal, na.rm = TRUE)) %>%
+	rename(year = 2)
+
+june_rainfall %>%
+	filter(StationID == "TPK") %>%
+	ggplot() +
+		geom_bar(aes(factor(year), rainfall, fill = rainfall), stat = "identity") +
+		labs(x = "Year", y = "Total rainfall (mm)") +
+		ggtitle("Historical June rainfall - Te Puke") +
+		scale_y_continuous(limits = c(0,500)) +
+		theme_bw()
+		
+ggsave(paste0("output/Historical June rainfall - Te Puke ", current_year, ".png"), width = 12, height = 8)
 
 ```
