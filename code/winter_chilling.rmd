@@ -36,14 +36,16 @@ met_data <-
 	mutate(StopDate = dmy_hm(StopDate),
 		   Month = month(StopDate),
 		   Year = year(StopDate), 
-		   DayOfYear = yday(StopDate)) %>%
-	filter(Month > 4) %>%
-	   mutate(IsBelowSevenC = ifelse(TemperatureMean < 7 & !is.na(TemperatureMean), 1, 0))
+		   DayOfYear = yday(StopDate))
+
 				
 
-by_site <- met_data %>%
-			group_by(Year, StationID) %>%
-			mutate(ChillingHoursCumulative = cumsum(IsBelowSevenC))
+by_site <- 
+	met_data %>%
+	filter(Month > 4) %>%
+	mutate(IsBelowSevenC = ifelse(TemperatureMean < 7 & !is.na(TemperatureMean), 1, 0)) %>%
+	group_by(Year, StationID) %>%
+	mutate(ChillingHoursCumulative = cumsum(IsBelowSevenC))
 
 richardsonChillTable <- read.csv(here("input/RichardsonChillingTable.csv"))
 
@@ -432,4 +434,61 @@ by_site %>%
 ggsave(here("output/Three sites vs 5 year mean - 2021.png"), width = 14, height = 8)
 
 
+```
+
+
+```{r monthly}
+
+block23_data <- 
+	read_csv(here("input/Block23_MetStation.dat"), skip = 1)
+
+met_data %>%
+    filter(StationID == "TPK") %>%
+    group_by(Year, Month) %>%
+    summarise(avg_temp = mean(TemperatureMean, na.rm = TRUE)) %>%
+    arrange(Month) %>%
+    ggplot() +
+        geom_point(aes(factor(Year), avg_temp, colour = avg_temp)) +
+		scale_colour_gradient2(low = "blue", mid = "pink", high = "red", midpoint = 14) +
+        facet_wrap(~Month, 
+        		   scales = "free_x", 
+        		   labeller = labeller(Month = c("1" = "January",
+        		   								 "2" = "February",
+        		   								 "3"  = "March", 
+        		   								 "4" = "April",
+        		   								 "5" = "May",
+        										 "6" = "June", 
+        										 "7" = "July", 
+        										 "8" = "August", 
+        										 "9" = "September", 
+        										 "10" = "October", 
+        										 "11" = "November", 
+        										 "12" = "December"))) + 
+		theme_bw() +
+		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+
+block23_data %>%
+	mutate(y = year(TMSTAMP), m = month(TMSTAMP)) %>%
+	group_by(y, m) %>%
+	summarise(avg_temp = mean(`AmbTemp_Avg`)) %>%
+	ggplot() +
+		geom_point(aes(factor(y), avg_temp, colour = avg_temp)) + 
+		scale_colour_gradient2(low = "blue", mid = "pink", high = "red", midpoint = 14) +
+        facet_wrap(~m, 
+        		   scales = "free_x", 
+        		   labeller = labeller(m = c("1" = "January",
+        		   								 "2" = "February",
+        		   								 "3"  = "March", 
+        		   								 "4" = "April",
+        		   								 "5" = "May",
+        										 "6" = "June", 
+        										 "7" = "July", 
+        										 "8" = "August", 
+        										 "9" = "September", 
+        										 "10" = "October", 
+        										 "11" = "November", 
+        										 "12" = "December"))) + 
+		theme_bw() +
+		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ```
