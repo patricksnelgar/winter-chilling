@@ -34,6 +34,7 @@ met_data <-
 		   RelativeHumidityMean = 5, RainTotal = 6,
 		   RadiationMean = 7, WindSpeedMean = 8) %>%
 	mutate(StopDate = dmy_hm(StopDate),
+		   StartDate = dmy_hm(StartDate),
 		   Month = month(StopDate),
 		   Year = year(StopDate), 
 		   DayOfYear = yday(StopDate))
@@ -63,11 +64,11 @@ met_data %>%
 	knitr::kable()
 
 # Check for missing hours
-# be aware of daylight savings! 0300 in 9/10th month
+# be aware of daylight savings! 0300 in 9/10th month, always has the same stop and start date, down to the hour
 met_data %>%
 	group_by(StationID, Year) %>%
-	summarise(d = c(NA, diff(hour(StopDate))), date = StopDate) %>%
-	filter(d != 1 & d != -23) %>%
+	summarise(d = c(NA, diff(hour(StopDate))), date = StopDate, start_date = StartDate) %>%
+	filter(d != 1 & d != -23 & date != start_date) %>%
 	arrange(date) %>%
 	knitr::kable()
 
@@ -377,7 +378,7 @@ ggsave(paste0("output/Historical June rainfall - Te Puke ", current_year, ".png"
 ```{r three-sites}
 # Have to exclude 2017 data for TPK due to sensor error
 historical <- 
-	met_data %>%
+	by_site %>%
 	mutate(doy = yday(StopDate)) %>%
 	filter(StationID %in% c("TPK", "KER", "RIR") 
 		   & year(StopDate) > current_year - 5 
@@ -399,9 +400,11 @@ historical %>%
 
 five_year_chill <- 
 	historical %>%
-	group_by(StationID, doy) %>%
+	group_by(StationID, Year, doy) %>%
 	arrange(doy) %>% 
-	summarise(day_chill = max(chilling_hours, na.rm = TRUE), historical_chill_hours = mean(day_chill))
+	summarise(day_chill = max(chilling_hours, na.rm = TRUE)) %>%
+	group_by(StationID, doy) %>%
+	summarise(historical_chill_hours = mean(day_chill))
 
 
 # five_year_chill %>%
