@@ -105,6 +105,7 @@ by_site %>%
 			ylim(0,1000) + 
 			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			#geom_vline(aes(xintercept = yday(ymd("2021-07-04"))))+
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
 			guides(size = FALSE) + 
 			theme_bw()
