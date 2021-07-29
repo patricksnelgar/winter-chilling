@@ -12,6 +12,8 @@ library(magrittr)
 library(scales)
 library(tidyverse)
 library(here)
+library(plotly)
+library(htmlwidgets)
 
 if(!dir.exists(here("output"))) {
 	dir.create(here("output"))
@@ -437,6 +439,29 @@ by_site %>%
 
 ggsave(here("output/Three sites vs 5 year mean - 2021.png"), width = 14, height = 8)
 
+
+```
+
+```{r}
+ker_chill <- 
+	by_site %>% 
+	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year >= oldest_year) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle(paste("Cumulative chilling hours - Kerikeri", current_year)) +
+			ylim(0,1000) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
+			guides(size = FALSE) + 
+			theme_bw()
+
+ker_interactive <- ggplotly(ker_chill)
+
+saveWidget(ker_interactive, here("output/Winter chilling - Kerikeri 2021 - interactive.html"), selfcontained = TRUE)
 
 ```
 
