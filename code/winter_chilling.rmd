@@ -521,3 +521,33 @@ block23_data %>%
 		theme_bw() +
 		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ```
+
+
+```{r, include = FALSE}
+
+by_site %>% 
+	mutate(alt_hours = case_when(TemperatureMean <= 7.2 ~ 1,
+								 TemperatureMean > 7.2 ~ 0, 
+								 is.na(TemperatureMean) ~ 0,
+								 TRUE ~ 0),
+		   alt_cumulative = cumsum(alt_hours)) %>% 
+	filter(StationID == "KER" & Year == 2021) %>% 
+	ggplot() +
+		geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = "sub7C"))+
+		geom_line(aes(DayOfYear, alt_cumulative, colour = "sub7.2C")) +
+		scale_colour_manual(values = c("sub7C" = "black", "sub7.2C" = "skyblue")) + 
+		scale_x_continuous(breaks = pretty_breaks(15), limits = c(120, 275)) +
+		ylim(0, 500) + 
+		theme_bw()
+	
+	by_site %>% 
+	mutate(alt_hours = case_when(TemperatureMean <= 7.2 ~ 1,
+								 TemperatureMean > 7.2 ~ 0, 
+								 is.na(TemperatureMean) ~ 0,
+								 TRUE ~ 0),
+		   alt_cumulative = cumsum(alt_hours)) %>% 
+	filter(StationID == "KER" & Year == 2021) %>% 
+	slice(n()) %>% 
+	select(ChillingHoursCumulative, alt_cumulative)
+
+```
