@@ -59,8 +59,8 @@ richardsonChillTable <- read.csv(here("input/RichardsonChillingTable.csv"))
 # Check for missing days
 met_data %>%
 	group_by(StationID, Year) %>%
-	summarise(d = c(NA, diff(yday(StopDate))), date = StopDate) %>%
-	filter(d > 1 | d < 0) %>%
+	summarise(days_missing = c(NA, diff(yday(StopDate))) - 1, date = StopDate) %>%
+	filter(days_missing > 0 | days_missing < -1) %>%
 	knitr::kable()
 
 # Check for missing hours
@@ -439,7 +439,6 @@ ggsave(here("output/Three sites vs 5 year mean - 2021.png"), width = 14, height 
 
 ```
 
-
 ```{r monthly}
 
 block23_data <- 
@@ -495,3 +494,41 @@ block23_data %>%
 		theme_bw() +
 		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ```
+
+```{r, include = FALSE}
+
+# Annette found 7.2C is the correct cutoff of chilling to occur
+# how does this stack up against 7C for Kerikeri
+
+by_site %>% 
+	filter(StationID == "KER" & Year == 2021) %>% 
+	mutate(alt_hours = case_when(TemperatureMean <= 7.2 ~ 1, 
+								 TemperatureMean > 7.2 ~ 0, 
+								 is.na(TemperatureMean) ~ 0),
+		   alt_cumulative = cumsum(alt_hours)) %>% 
+	ggplot() +
+		geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = "7C")) +
+		geom_line(aes(DayOfYear, alt_cumulative, colour = "7.2C")) +
+		scale_colour_manual(values = c("7C" = "black", "7.2C" = "skyblue")) +
+		scale_y_continuous(breaks = pretty_breaks(10), limits = c(0, 600)) +
+		scale_x_continuous(breaks = pretty_breaks(20), limits = c(121, 275)) +
+		theme_bw()
+
+
+# How about Te Puke
+by_site %>% 
+	filter(StationID == "TPK" & Year == 2021) %>% 
+	mutate(alt_hours = case_when(TemperatureMean <= 7.2 ~ 1, 
+								 TemperatureMean > 7.2 ~ 0, 
+								 is.na(TemperatureMean) ~ 0),
+		   alt_cumulative = cumsum(alt_hours)) %>% 
+	ggplot() +
+		geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = "7C")) +
+		geom_line(aes(DayOfYear, alt_cumulative, colour = "7.2C")) +
+		scale_colour_manual(values = c("7C" = "black", "7.2C" = "skyblue")) +
+		scale_y_continuous(breaks = pretty_breaks(10), limits = c(0, 600)) +
+		scale_x_continuous(breaks = pretty_breaks(20), limits = c(121, 275)) +
+		theme_bw()
+
+```
+
