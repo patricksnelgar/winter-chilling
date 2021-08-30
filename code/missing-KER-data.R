@@ -45,3 +45,24 @@ ker_missing_met_data %>%
 # yeah missing in raw data file too
 
 write_csv(matched_data, here("workspace/KER-missing-data.csv"))
+
+
+
+# extracting the daily readings for bb prediction
+# looks funny... when compared tot he DL from metwatch, could be the 9am point?
+ker_daily <- 
+	read_csv(here("input/KER.dat")) %>% 
+	rename(ArrId = 1) %>% 
+	filter(ArrId == 50)
+
+# see what the manual calc looks like
+ker_raw %>% 
+	mutate(doy = yday(StopDate)) %>% 
+	filter(StopDate >= ymd_hms("2021-08-01 10:00:00") & StopDate <= ymd_hms("2021-08-30 09:00:00")) %>% 
+	bind_rows(data.frame(StopDate = ymd_hms("2021-08-23 00:00:00"))) %>% 
+	arrange(StopDate) %>% 
+	mutate(doy_offset = rep(c(1:29), each = 24)) %>% 
+	group_by(doy_offset) %>% 
+	summarise(doy = first(doy), mean_temp = mean(Air_Temp, na.rm = TRUE)) %>% 
+	mutate(Day = as.Date(doy , origin = ymd("2021-01-01"))) %>% 
+	write_csv(here("workspace/ker_daily_temps.csv"))
