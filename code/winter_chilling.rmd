@@ -12,6 +12,7 @@ library(magrittr)
 library(scales)
 library(tidyverse)
 library(here)
+library(kableExtra)
 
 if(!dir.exists(here("output"))) {
 	dir.create(here("output"))
@@ -529,6 +530,27 @@ by_site %>%
 		scale_y_continuous(breaks = pretty_breaks(10), limits = c(0, 600)) +
 		scale_x_continuous(breaks = pretty_breaks(20), limits = c(121, 275)) +
 		theme_bw()
+
+
+# Look for any missing values at the three sites for the current year
+by_site %>% 
+	filter(Year == current_year & is.na(TemperatureMean) & StationID %in% c("KER", "TPK", "RIW")) %>% 
+	kable() %>% 
+	kable_styling("striped")
+
+# Only TPK has any (today = 2021-08-31)
+na_data_tpk <- 
+	by_site %>% 
+	filter(Year == current_year & is.na(TemperatureMean) & StationID == "TPK")
+
+# find if there is matches in the raw file
+# huh there isnt, wierd.
+tpk_raw <- 
+	read_csv(here("input/TPK.dat")) %>% 
+	rename(ArrayID = 1, Year = 3, doy = 4, hm = 5, airtemp = 6) %>% 
+	mutate(StopDate = as.Date(doy, origin = ymd(paste(Year - 1, "12-31", sep = "-"))),
+		   StopDate = as_datetime(StopDate + hm/2400)) %>% 
+	filter(ArrayID == 20 & Year == 2021)
 
 ```
 
