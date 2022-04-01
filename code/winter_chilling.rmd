@@ -552,5 +552,17 @@ tpk_raw <-
 		   StopDate = as_datetime(StopDate + hm/2400)) %>% 
 	filter(ArrayID == 20 & Year == 2021)
 
+
+# data table for TPK and KER with below 7C and Richardson units by year
+by_site %>% 
+	filter(StationID %in% c("KER", "TPK") & (Month > 4 & Month < 10) & !is.na(TemperatureMean)) %>%  
+	group_by(StationID, Year) %>% 
+	mutate(richardsonUnit = richardsonChillTable$value[findInterval(TemperatureMean , richardsonChillTable$RangeMax[-7])+1],
+		   richardsonChillingHours = cumsum(richardsonUnit)) %>% 
+	slice(n()) %>% 
+	select(StationID, Year, ChillingHoursCumulative, richardsonChillingHours) %>% 
+	filter(Year == 2021)
+	write_csv(here("output/Chilling hours table tpk ker.csv"))
+
 ```
 
