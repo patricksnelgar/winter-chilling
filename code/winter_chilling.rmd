@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 library(lubridate)
 library(magrittr)
 library(scales)
@@ -21,10 +21,10 @@ if(!dir.exists(here("output"))) {
 source(here("code/plot-themes.R"))
 ```
 
-```{r data_import, echo=FALSE, include=FALSE}
+```{r data_import, include=FALSE}
 
-current_year <- as.integer(format(Sys.Date(), "%Y"))
-oldest_year <- current_year - 10
+current_Year <- as.integer(format(Sys.Date(), "%Y"))
+oldest_Year <- current_Year - 10
 met_data <- NULL
 
 met_data <-  
@@ -52,9 +52,9 @@ by_site <-
 richardsonChillTable <- read.csv(here("input/RichardsonChillingTable.csv"))
 
 
-# by_site %>% filter(`Station ID` == "KER") %>% tail() %>% select(StopDate, temperature, chilling_hours)
+# by_site %>% filter(`Station ID` == "KER") %>% tail() %>% select(StopDate, temperature, ChillingHoursCumulative)
 # 
-# by_site %>% filter(Year == 2019 & Month > 3) %>% select(StopDate, temperature, chilling_hours)
+# by_site %>% filter(Year == 2019 & Month > 3) %>% select(StopDate, temperature, ChillingHoursCumulative)
 
 
 # Check for missing days
@@ -65,7 +65,7 @@ met_data %>%
 	knitr::kable()
 
 # Check for missing hours
-# be aware of daylight savings! 0300 in 9/10th month, always has the same stop and start date, down to the hour
+# be aware of daylight savings! 0300 in 9/10th Month, always has the same stop and start date, down to the hour
 met_data %>%
 	group_by(StationID, Year) %>%
 	summarise(d = c(NA, diff(hour(StopDate))), date = StopDate, start_date = StartDate) %>%
@@ -83,117 +83,180 @@ met_data %>%
 
 ```
 
-```{r graphs, echo=FALSE}
+```{r graphs_current}
 
 # numeric tick points for x axis
 # only interested in data from April - October
-doy_ticks <- 
+DayOfYear_ticks <- 
 	by_site%>%
 	filter(StationID == "TPK" & (Month > 4 & Month < 10)) %$%
 	pretty(x = DayOfYear, n = 7)
 
 # labels for x axis ticks
-month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+Month_ticks <- format(as.Date(DayOfYear_ticks, origin), "%b-%d")
 
 by_site %>% 
-	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year >= oldest_year & !Year == 2017) %>%
+	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year >= oldest_Year & !Year == 2017) %>%
 		ggplot() +
 			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
 			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green",  "black")) + 
-			ggtitle(paste("Cumulative chilling hours - Te Puke", current_year)) +
+			ggtitle(paste("Cumulative chilling hours - Te Puke", current_Year)) +
 			ylim(0,1000) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
 
-ggsave(paste0("output/Winter chilling - Te Puke ", current_year, ".png"), width = 12, height = 8)
+ggsave(here(paste0("output/Winter chilling - Te Puke ", current_Year, ".png")), width = 12, height = 8)
 
 by_site %>% 
-	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year >= oldest_year) %>%
+	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year >= oldest_Year) %>%
 		ggplot() +
 			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
 			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
-			ggtitle(paste("Cumulative chilling hours - Kerikeri", current_year)) +
+			ggtitle(paste("Cumulative chilling hours - Kerikeri", current_Year)) +
 			ylim(0,1000) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
 
-ggsave(paste0("output/Winter chilling - Kerikeri ", current_year, ".png"), width = 12, height = 8)
+ggsave(here(paste0("output/Winter chilling - Kerikeri ", current_Year, ".png")), width = 12, height = 8)
 
 
 by_site %>% 
-	filter(StationID == "RIR" & (Month > 4 & Month < 10) & Year >= oldest_year) %>%
+	filter(StationID == "RIR" & (Month > 4 & Month < 10) & Year >= oldest_Year) %>%
 		ggplot() +
 			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
 			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
-			ggtitle(paste("Cumulative chilling hours - Riwaka", current_year)) +
+			ggtitle(paste("Cumulative chilling hours - Riwaka", current_Year)) +
 			ylim(0,1700) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
 
-ggsave(paste0("output/Winter chilling - Riwaka ", current_year, ".png"), width = 12, height = 8)
+ggsave(here(paste0("output/Winter chilling - Riwaka ", current_Year, ".png")), width = 12, height = 8)
+
+```
+
+
+```{r chilling_2021}
+
+DayOfYear_ticks <- 
+	by_site %>%
+		filter(StationID == "TPK" & (Month > 4 & Month < 10) & (Year >= 2011 & Year < 2021)) %$%
+		pretty(x = DayOfYear, n = 7)
+
+# labels for x axis ticks
+Month_ticks <- format(as.Date(DayOfYear_ticks, origin), "%b-%d")
+
+by_site %>% 
+	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year >= 2011 & !Year == 2017) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green",  "black")) + 
+			ggtitle("Cumulative chilling hours - Te Puke 2021") +
+			ylim(0,1000) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
+			guides(size = "none") + 
+			theme_bw()
+
+
+ggsave(here("output/Winter chilling - Te Puke 2021.png"), width = 12, height = 8)
+
+by_site %>% 
+	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year >= 2011) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle("Cumulative chilling hours - Kerikeri 2021") +
+			ylim(0,1000) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
+			guides(size = "none") + 
+			theme_bw()
+
+
+ggsave(here("output/Winter chilling - Kerikeri 2021.png"), width = 12, height = 8)
+
+
+# and tables for chill by end of July for Vic
+# 2020 & 2021, by station (KER, TPK)
+
+by_site %>% 
+	filter(StationID %in% c("TPK", "KER") & Year %in% c(2020, 2021) & Month == 7) %>% 
+	group_by(StationID, Year) %>% 
+	arrange(desc(StopDate)) %>% 
+	select(StationID, Year, ChillingHoursCumulative) %>% 
+	slice(1) %>% 
+	kable() %>% 
+	kable_styling("striped")
 
 ```
 
 ```{r chilling_2018, include=FALSE}
 
-doy_ticks <- by_site%>%
-				filter(StationID == "TPK" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %$%
-				pretty(x = doy, n = 7)
+DayOfYear_ticks <- 
+	by_site %>%
+		filter(StationID == "TPK" & (Month > 4 & Month < 10) & (Year >= 2008 & Year < 2019)) %$%
+		pretty(x = DayOfYear, n = 7)
 
 # labels for x axis ticks
-month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+Month_ticks <- format(as.Date(DayOfYear_ticks, origin), "%b-%d")
 
 by_site %>% 
-	filter(StationID == "TPK" & (month > 4 & month < 10) & (!year == 2017 & (year >= 2008 & year < 2019))) %>%
+	filter(StationID == "TPK" & (Month > 4 & Month < 10) & (!Year == 2017 & (Year >= 2008 & Year < 2019))) %>%
 		ggplot() +
-			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
 			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold", "darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green",  "black")) + 
 			ggtitle("Cumulative chilling hours - Te Puke 2018") +
 			ylim(0,2000) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
-ggsave("../output/Winter chilling - Te Puke 2018.png", width = 12, height = 8)
+ggsave(here("output/Winter chilling - Te Puke 2018.png"), width = 12, height = 8)
 
 by_site %>% 
-	filter(`Station ID` == "KER" & (month > 4 & month < 10) & (year >= 2008 & year < 2019)) %>%
+	filter(StationID == "KER" & (Month > 4 & Month < 10) & (Year >= 2008 & Year < 2019)) %>%
 		ggplot() +
-			geom_line(aes(doy, chilling_hours, colour = factor(year), size = factor(year))) + 
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
 			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
 			ggtitle("Cumulative chilling hours - Kerikeri 2018") +
 			ylim(0,1500) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
 			guides(size = FALSE) + 
 			theme_bw()
 
-ggsave("Winter chilling - Kerikeri 2019.png", width = 12, height = 8)
+ggsave(here("output/Winter chilling - Kerikeri 2019.png"), width = 12, height = 8)
 
 
 ```
@@ -207,7 +270,7 @@ mid_g11 <- yday(ymd("2019/08/01"))
 late_g11 <- yday(ymd("2019/08/07"))
 vLate_g11 <- yday(ymd("2019/09/16"))
 
-g11 <- data.frame(doy = c(early_g11, mid_g11, late_g11, vLate_g11))
+g11 <- data.frame(DayOfYear = c(early_g11, mid_g11, late_g11, vLate_g11))
 
 # R19
 
@@ -216,16 +279,16 @@ mid_r19 <- yday(ymd("2019/08/15"))
 late_r19 <- yday(ymd("2019/08/21"))
 vLate_r19 <- yday(ymd("2019/08/29"))
 
-r19 <- data.frame(doy = c(early_r19, mid_r19, late_r19, vLate_r19))
+r19 <- data.frame(DayOfYear = c(early_r19, mid_r19, late_r19, vLate_r19))
 
 
 by_site %>% 
-	filter(`Station ID` == "TPK" & year == 2019 & doy %in% c(g11$doy, r19$doy)) %>%
-	group_by(doy) %>%
+	filter(`Station ID` == "TPK" & Year == 2019 & DayOfYear %in% c(g11$DayOfYear, r19$DayOfYear)) %>%
+	group_by(DayOfYear) %>%
 	summarise(temp_max = max(temperature),
 			  temp_min = min(temperature),
 			  rainfall = sum(`Rain Total`)) %>%
-	mutate(date = as.Date(doy, origin = "2018/12/31"))
+	mutate(date = as.Date(DayOfYear, origin = "2018/12/31"))
 	
 
 ```
@@ -233,7 +296,7 @@ by_site %>%
 ```{r richardsonGraphs, echo = FALSE}
 
 by_site %>% 
-	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year >= oldest_year & !Year == 2017 & !is.na(TemperatureMean)) %>%
+	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year >= oldest_Year & !Year == 2017 & !is.na(TemperatureMean)) %>%
 	mutate(richardsonUnit = richardsonChillTable$value[findInterval(TemperatureMean , richardsonChillTable$RangeMax[-7])+1],
 		   richardsonChillingHours = cumsum(richardsonUnit)) %>%
 		ggplot() +
@@ -241,19 +304,19 @@ by_site %>%
 			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green",  "black")) + 
-			ggtitle(paste("Cumulative Richardson chill units - Te Puke", current_year)) +
+			ggtitle(paste("Cumulative Richardson chill units - Te Puke", current_Year)) +
 			ylim(-300,1800) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			labs(x = "Date", y = "Richardson units", colour = "Year", caption = "2017 is excluded due to sensor error") + 
 			guides(size = FALSE) +
 			theme_bw() +
 			theme(axis.text.x = element_text(angle = 45, hjust = 1))
 			
 		
-ggsave(here(paste("output/Richardson Chilling hours - Te Puke", current_year, ".png")), width = 12, height = 8)
+ggsave(here(paste("output/Richardson Chilling hours - Te Puke", current_Year, ".png")), width = 12, height = 8)
 
 by_site %>% 
-	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year >= oldest_year & !is.na(TemperatureMean)) %>%
+	filter(StationID == "KER" & (Month > 4 & Month < 10) & Year >= oldest_Year & !is.na(TemperatureMean)) %>%
 	mutate(richardsonUnit = richardsonChillTable$value[findInterval(TemperatureMean , richardsonChillTable$RangeMax[-7])+1],
 		   richardsonChillingHours = cumsum(richardsonUnit)) %>%
 		ggplot() +
@@ -261,20 +324,20 @@ by_site %>%
 			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
-			ggtitle(paste("Cumulative Richardson chill units - Kerikeri", current_year)) +
+			ggtitle(paste("Cumulative Richardson chill units - Kerikeri", current_Year)) +
 			ylim(-300,1800) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			labs(x = "Date", y = "Richardson units", colour = "Year") + 
 			guides(size = FALSE) +
 			theme_bw() +
 			theme(axis.text.x = element_text(angle = 45, hjust = 1))
 			
 		
-ggsave(here(paste("output/Richardson Chilling hours - Kerikeri", current_year, ".png")), width = 12, height = 8)
+ggsave(here(paste("output/Richardson Chilling hours - Kerikeri", current_Year, ".png")), width = 12, height = 8)
 
 
 by_site %>% 
-	filter(StationID == "RIR" & (Month > 4 & Month < 10) & Year >= oldest_year & !is.na(TemperatureMean)) %>%
+	filter(StationID == "RIR" & (Month > 4 & Month < 10) & Year >= oldest_Year & !is.na(TemperatureMean)) %>%
 	mutate(richardsonUnit = richardsonChillTable$value[findInterval(TemperatureMean , richardsonChillTable$RangeMax[-7])+1],
 		   richardsonChillingHours = cumsum(richardsonUnit)) %>%
 		ggplot() +
@@ -282,28 +345,28 @@ by_site %>%
 			scale_size_manual(values = c(rep(0.5, 10), 1)) + 
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
-			ggtitle(paste("Cumulative Richardson chill units - Riwaka", current_year)) +
+			ggtitle(paste("Cumulative Richardson chill units - Riwaka", current_Year)) +
 			ylim(-100,2200) + 
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			labs(x = "Date", y = "Richardson units", colour = "Year") + 
 			guides(size = FALSE) +
 			theme_bw() +
 			theme(axis.text.x = element_text(angle = 45, hjust = 1))
 			
 		
-ggsave(here(paste("output/Richardson Chilling hours - Riwaka", current_year, ".png")), width = 12, height = 8)
+ggsave(here(paste("output/Richardson Chilling hours - Riwaka", current_Year, ".png")), width = 12, height = 8)
 
 ```
 
 ```{r, hc-alt-2020, include=FALSE}
 
-doy_ticks <- 
+DayOfYear_ticks <- 
 	by_site%>%
 	filter(StationID == "TPK" & (Month > 4 & Month < 10)) %$%
 	pretty(x = DayOfYear, n = 7)
 
 # labels for x axis ticks
-month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+Month_ticks <- format(as.Date(DayOfYear_ticks, origin), "%b-%d")
 
 tpk_2020_graph <- 
 	by_site %>% 
@@ -314,7 +377,7 @@ tpk_2020_graph <-
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "brown", "purple",
 										  "forestgreen", "darkturquoise",  "black")) + 
 			ggtitle("Cumulative chilling hours - Te Puke 2020") +
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			scale_y_continuous(breaks = seq(0, 1000, 100), limits = c(0,1000),
 							   expand = c(0,0)) +
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
@@ -333,7 +396,7 @@ ker_2020_graph <-
 			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "brown", "purple",
 										  "forestgreen", "darkturquoise", "hotpink",  "black")) + 
 			ggtitle("Cumulative chilling hours - Kerikeri 2020") +
-			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			scale_x_continuous(breaks = DayOfYear_ticks, labels = Month_ticks) + 
 			scale_y_continuous(breaks = seq(0, 1000, 100), limits = c(0,1000),
 							   expand = c(0,0)) +
 			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year") + 
@@ -350,29 +413,29 @@ ggsave(here("output/Winter chilling (HC-alt) - Kerikeri 2020.png"), ker_2020_gra
 # Select only june data
 june_rainfall <- 
 	met_data %>%
-	filter(month(StopDate) == 6) %>%
-	group_by(StationID, year(StopDate))
+	filter(Month(StopDate) == 6) %>%
+	group_by(StationID, Year(StopDate))
 	
 # How many 
 june_rainfall %>%
 	summarise(n = n() / 24)
 
 june_rainfall %<>%
-	filter(n() / 24 == 30 | year(StopDate) == current_year) %>%
-	group_by(StationID, year(StopDate)) %>%
+	filter(n() / 24 == 30 | Year(StopDate) == current_Year) %>%
+	group_by(StationID, Year(StopDate)) %>%
 	summarise(rainfall = sum(RainTotal, na.rm = TRUE)) %>%
-	rename(year = 2)
+	rename(Year = 2)
 
 june_rainfall %>%
 	filter(StationID == "TPK") %>%
 	ggplot() +
-		geom_bar(aes(factor(year), rainfall, fill = rainfall), stat = "identity") +
+		geom_bar(aes(factor(Year), rainfall, fill = rainfall), stat = "identity") +
 		labs(x = "Year", y = "Total rainfall (mm)") +
 		ggtitle("Historical June rainfall - Te Puke") +
 		scale_y_continuous(limits = c(0,500)) +
 		theme_bw()
 		
-ggsave(paste0("output/Historical June rainfall - Te Puke ", current_year, ".png"), width = 12, height = 8)
+ggsave(paste0("output/Historical June rainfall - Te Puke ", current_Year, ".png"), width = 12, height = 8)
 
 ```
 
@@ -380,14 +443,14 @@ ggsave(paste0("output/Historical June rainfall - Te Puke ", current_year, ".png"
 # Have to exclude 2017 data for TPK due to sensor error
 historical <- 
 	by_site %>%
-	mutate(doy = yday(StopDate)) %>%
+	mutate(DayOfYear = yday(StopDate)) %>%
 	filter(StationID %in% c("TPK", "KER", "RIR") 
-		   & year(StopDate) > current_year - 5 
-		   & !(StationID == "TPK" & year(StopDate) == 2017) 
-		   & doy >= 121 & doy <= 273
-		   & year(StopDate) != current_year) %>%
-	group_by(StationID, year(StopDate)) %>%
-	mutate(chilling_hours = cumsum(IsBelowSevenC))
+		   & Year(StopDate) > current_Year - 5 
+		   & !(StationID == "TPK" & Year(StopDate) == 2017) 
+		   & DayOfYear >= 121 & DayOfYear <= 273
+		   & Year(StopDate) != current_Year) %>%
+	group_by(StationID, Year(StopDate)) %>%
+	mutate(ChillingHoursCumulative = cumsum(IsBelowSevenC))
 
 # any missing data?
 historical %>%
@@ -396,51 +459,51 @@ historical %>%
 
 historical %>%
 	ggplot() +
-		geom_line(aes(StopDate, chilling_hours, group = year(StopDate))) +
+		geom_line(aes(StopDate, ChillingHoursCumulative, group = Year(StopDate))) +
 		facet_wrap(~StationID)
 
-five_year_chill <- 
+five_Year_chill <- 
 	historical %>%
-	group_by(StationID, Year, doy) %>%
-	arrange(doy) %>% 
-	summarise(day_chill = max(chilling_hours, na.rm = TRUE)) %>%
-	group_by(StationID, doy) %>%
+	group_by(StationID, Year, DayOfYear) %>%
+	arrange(DayOfYear) %>% 
+	summarise(day_chill = max(ChillingHoursCumulative, na.rm = TRUE)) %>%
+	group_by(StationID, DayOfYear) %>%
 	summarise(historical_chill_hours = mean(day_chill))
 
 
-# five_year_chill %>%
+# five_Year_chill %>%
 # 	ggplot() +
-# 		geom_line(aes(doy, chill_hours, colour = StationID)) + 
+# 		geom_line(aes(DayOfYear, chill_hours, colour = StationID)) + 
 # 		scale_x_continuous(breaks = pretty_breaks(30))
 
 historical_ticks <- 
-	as.Date(seq(min(five_year_chill$doy) - 1, max(five_year_chill$doy), by = 7,), origin = "2021-01-01")
+	as.Date(seq(min(five_Year_chill$DayOfYear) - 1, max(five_Year_chill$DayOfYear), by = 7,), origin = "2021-01-01")
 
 chill_colours <- brewer_pal("qual", 7, 1)(7)
 
 by_site %>%
 	filter(StationID %in% c("TPK", "KER", "RIR")
-		   & Year == current_year 
+		   & Year == current_Year 
 		   & DayOfYear >= 121 & DayOfYear <= 273) %>%
 	ggplot() +
 		geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = StationID)) +
-		geom_line(aes(doy, historical_chill_hours, colour = "5 year mean"), data = five_year_chill) + 
+		geom_line(aes(DayOfYear, historical_chill_hours, colour = "5 Year mean"), data = five_Year_chill) + 
 		facet_wrap(~StationID, labeller = labeller(StationID = c("KER" = "Kerikeri", "RIR" = "Riwaka", "TPK" = "Te Puke"))) + 
 		scale_y_continuous(breaks = pretty_breaks(20)) +
 		scale_x_continuous(breaks = yday(historical_ticks), labels = format(historical_ticks, "%b-%d")) +
-		scale_colour_manual(values = c("5 year mean" = "black", "TPK" = chill_colours[5], "KER" = chill_colours[2], "RIR" = chill_colours[4]), 
+		scale_colour_manual(values = c("5 Year mean" = "black", "TPK" = chill_colours[5], "KER" = chill_colours[2], "RIR" = chill_colours[4]), 
 							labels = c("KER" = "Kerikeri", "RIR" = "Riwaka", "TPK" = "Te Puke")) +
 		labs(colour = "Site", x = "Date", y = "Cumulative chilling hours (< 7°C)") +
-		ggtitle(paste("Cumulative chilling hours -", current_year)) +
+		ggtitle(paste("Cumulative chilling hours -", current_Year)) +
 		theme_bw() +
 		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 
-ggsave(here("output/Three sites vs 5 year mean - 2021.png"), width = 14, height = 8)
+ggsave(here("output/Three sites vs 5 Year mean - 2021.png"), width = 14, height = 8)
 
 
 ```
 
-```{r monthly}
+```{r Monthly}
 
 block23_data <- 
 	read_csv(here("input/Block23_MetStation.dat"), skip = 1)
@@ -472,7 +535,7 @@ met_data %>%
 
 
 block23_data %>%
-	mutate(y = year(TMSTAMP), m = month(TMSTAMP)) %>%
+	mutate(y = Year(TMSTAMP), m = Month(TMSTAMP)) %>%
 	group_by(y, m) %>%
 	summarise(avg_temp = mean(`AmbTemp_Avg`)) %>%
 	ggplot() +
@@ -532,28 +595,28 @@ by_site %>%
 		theme_bw()
 
 
-# Look for any missing values at the three sites for the current year
+# Look for any missing values at the three sites for the current Year
 by_site %>% 
-	filter(Year == current_year & is.na(TemperatureMean) & StationID %in% c("KER", "TPK", "RIW")) %>% 
+	filter(Year == current_Year & is.na(TemperatureMean) & StationID %in% c("KER", "TPK", "RIW")) %>% 
 	kable() %>% 
 	kable_styling("striped")
 
 # Only TPK has any (today = 2021-08-31)
 na_data_tpk <- 
 	by_site %>% 
-	filter(Year == current_year & is.na(TemperatureMean) & StationID == "TPK")
+	filter(Year == current_Year & is.na(TemperatureMean) & StationID == "TPK")
 
 # find if there is matches in the raw file
 # huh there isnt, wierd.
 tpk_raw <- 
 	read_csv(here("input/TPK.dat")) %>% 
-	rename(ArrayID = 1, Year = 3, doy = 4, hm = 5, airtemp = 6) %>% 
-	mutate(StopDate = as.Date(doy, origin = ymd(paste(Year - 1, "12-31", sep = "-"))),
+	rename(ArrayID = 1, Year = 3, DayOfYear = 4, hm = 5, airtemp = 6) %>% 
+	mutate(StopDate = as.Date(DayOfYear, origin = ymd(paste(Year - 1, "12-31", sep = "-"))),
 		   StopDate = as_datetime(StopDate + hm/2400)) %>% 
 	filter(ArrayID == 20 & Year == 2021)
 
 
-# data table for TPK and KER with below 7C and Richardson units by year
+# data table for TPK and KER with below 7C and Richardson units by Year
 by_site %>% 
 	filter(StationID %in% c("KER", "TPK") & (Month > 4 & Month < 10) & !is.na(TemperatureMean)) %>%  
 	group_by(StationID, Year) %>% 
