@@ -355,10 +355,6 @@ june_rainfall <-
 	met_data %>%
 	filter(month(StopDate) == 6) %>%
 	group_by(StationID, year(StopDate))
-	
-# How many 
-# june_rainfall %>%
-# 	summarise(n = n() / 24)
 
 june_rainfall_summary <- 
 	june_rainfall %>% 
@@ -389,32 +385,6 @@ june_rainfall_summary %>%
 		theme_bw()
 		
 ggsave(here(paste0("output/Historical June rainfall - Te Puke ", current_year, ".png")), width = 12, height = 8)
-
-# plot it as a cumulative line like chilling
-
-june_breaks <- 
-	june_rainfall %>% 
-	filter(StationID == "TPK", Year == 2021) %$%
-	pretty(x = DayOfYear, 30)
-
-june_ticks <- 
-	format(as.Date(june_breaks -1, origin), "%b-%d")
-
-# THIS BREAKS IF THERE ARE NA's in rainfall
-june_rainfall %>% 
-	filter(StationID == "TPK" & Year >= current_year - 10) %>% 
-	group_by(Year) %>% 
-	mutate(RainTotal = ifelse(!is.na(RainTotal), RainTotal, 0),
-		   cumulative_rainfall = cumsum(RainTotal),
-		   DayOfJune = format(StopDate, "%d %H:%M")) %>% 
-	select(StopDate, DayOfYear, Year, RainTotal, cumulative_rainfall) %>% 
-	ggplot() +
-		geom_line(aes(DayOfYear, cumulative_rainfall, colour = factor(Year), size = factor(Year))) +
-		scale_x_continuous(breaks = june_breaks, labels = june_ticks) +
-		scale_y_continuous(limits = c(0, 400)) +
-		scale_size_manual(values = c(rep(1, 10), 2)) +
-		guides(size = "none") +
-		theme_bw()
 
 ```
 
@@ -513,7 +483,7 @@ seven_day_snapshot_table <-
 		   station_long_name = factor(station_long_name, levels = c("Kerikeri", "Te Puke", "Riwaka"), ordered = TRUE)) %>% 
 	select(station_long_name, current_chill, diff_chill, average_temp, rainfall) %>% 
 	arrange(station_long_name) %>% 
-	kable(caption = " ",
+	kable(caption = "Seven day snapshot",
 		  digits = 1,
 		  format = "html",
 		  col.names = c("Location", "Total chill hours", "Seven day chill hours", "Average temperature (°C)", "Total rainfall (mm)")) %>% 
