@@ -561,6 +561,49 @@ block23_data %>%
 		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ```
 
+```{r api_scratch, eval=FALSE}
+# librarys needed for api call
+library(httr)
+library(jsonlite)
+
+
+api_key <- "hVmYq3t6w9z$C&F)J@McQfTjWnZr4u7x"
+api_base_url <- "https://api.metwatch.nz/"
+api_hourly_data_url <- "api/legacy/weather/hourly?station="
+
+# BP1 = Tauranga Aero
+station_id <- "BP1"
+
+start_date <- "2022-05-01T08:00:00"
+end_date <- "2022-06-19T08:00:00"
+
+# get station & date range
+
+response <- GET(paste0(api_base_url, api_hourly_data_url, station_id, "&start=", start_date, "&stop=", end_date),
+				config = add_headers("X-Api-Key" = api_key, "Accept" = c("*/*", "application/json")))
+
+parsed_response <- content(response, "text")
+json_response <- parse_json(parsed_response, TRUE)
+
+hourly_data <- 
+	data.frame(StationID = station_id,
+			   StopDate = as.POSIXct(json_response$STOPSTAMP, origin = ymd("1970-01-01"), tz = "NZ"),
+			   TemperatureMean = json_response$TDDATA)
+
+
+# now do chill things
+hourly_data %>% 
+	mutate(cumulative_chill = cumsum(ifelse(TemperatureMean< 7, 1, 0))) %>% 
+	ggplot() +
+		geom_line(aes(StopDate, cumulative_chill, colour = "Aero")) +
+		geom_line(aes(StopDate, cumulative_chill, colour = "TPK"), 
+				  data = met_data %>% 
+				  			filter(StationID == "TPK" & StopDate > ymd("2022-05-01") & StopDate < ymd("2022-06-20")) %>% 
+				  			mutate(cumulative_chill = cumsum(ifelse(TemperatureMean< 7, 1, 0)))) +
+		scale_x_datetime(breaks = pretty_breaks(10)) +
+		theme_bw()
+```
+
 ```{r scratch, eval=FALSE}
 
 # Annette found 7.2C is the correct cutoff of chilling to occur
