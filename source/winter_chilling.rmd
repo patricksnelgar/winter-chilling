@@ -375,13 +375,17 @@ june_rainfall_summary %>%
 									year == current_year ~ 2,
 									TRUE ~ 0)) %>% 
 	ggplot() +
-		geom_bar(aes(factor(year), rainfall, fill = factor(smaller_than)), stat = "identity") +
+		geom_bar(aes(factor(year), rainfall, fill = factor(year)), stat = "identity") +
 		labs(x = "Year", y = "Total rainfall (mm/month)", caption = "previous years are total monthly rainfall, current year is total rainfall to date.") +
 		ggtitle("Historical June rainfall - Te Puke") +
 		scale_y_continuous(limits = c(0,500)) +
 		# scale_colour_manual(values = c("1" = alpha("black", 0.5), "0" = alpha("forestgreen", 0.5), "2" = alpha("blue", 0.5))) +
-		scale_fill_manual(breaks = c(2,1,0), values = c("1" = alpha("tomato", 0.8), "0" = alpha("forestgreen", 0.8), "2" = alpha("blue", 0.9)),
-						  name = "", labels = c("0" = "Less than current", "1" = "More than current", "2" = "Current year")) +
+		#scale_fill_manual(breaks = c(2,1,0), values = c("1" = alpha("tomato", 0.8), "0" = alpha("forestgreen", 0.8), "2" = alpha("blue", 0.9)),
+		#				  name = "", labels = c("0" = "Less than current", "1" = "More than current", "2" = "Current year")) +
+		scale_fill_manual(breaks = 2003:2022, values = c(rep("lightgrey", 19), "blue")) +
+		geom_text(aes(x = "2004", y = 205, label = "Average June rainfall")) +
+		geom_hline(aes(yintercept = mean(rainfall)), alpha = 0.8) +
+		guides(fill = "none") +
 		theme_bw()
 		
 ggsave(here(paste0("output/Historical June rainfall - Te Puke ", current_year, ".png")), width = 12, height = 8)
@@ -471,8 +475,8 @@ seven_day_snapshot <-
 	filter(StopDate >= (today() - 7)) %>% 
 	summarise(diff_chill = last(cumulative_chill) - first(cumulative_chill),
 			  current_chill = last(cumulative_chill),
-			  average_temp = mean(TemperatureMean),
-			  rainfall = sum(RainTotal))
+			  average_temp = mean(TemperatureMean, na.rm = TRUE),
+			  rainfall = sum(RainTotal, na.rm = TRUE))
 	
 
 seven_day_snapshot_table <- 
