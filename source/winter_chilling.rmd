@@ -484,6 +484,28 @@ by_site %>%
 		theme_bw()
 
 ggsave(here(paste0("output/Te Puke - total monthly chill ", current_year, ".png")), width = 12, height = 8)
+
+
+by_site %>% 
+	filter(StationID == "RIR" & Year >= oldest_year & Month < month(today())) %>% 
+	group_by(Year, Month) %>% 
+	summarise(total_monthly_chill = last(ChillingHoursCumulative)) %>% 
+	group_by(Month) %>% 
+	summarise(total_chill = total_monthly_chill,
+			  mean_chill = mean(total_monthly_chill[Year != current_year]), 
+			  Year = Year) %>%
+	ggplot() +
+		geom_hline(aes(yintercept = mean_chill), alpha = 0.6, colour = "darkgrey", linetype = 2) +
+		ggtitle("Riwaka total monthly chill") +
+		geom_bar(aes(Year, total_chill), stat = "identity") +
+		scale_y_continuous(breaks = seq(0, 1000, by = 25), limits = c(0, 1000)) +
+		scale_x_continuous(breaks = 2012:2022) +
+		facet_wrap(~Month, labeller = labeller(Month = c("5" = "May", "6" = "June", "7" = "July"))) +
+		labs(x = "", y = "Cumulative chill hours (<7°C)", caption = "dotted line shows historical monthly average") +
+		theme_bw()
+
+ggsave(here(paste0("output/Riwaka - total monthly chill ", current_year, ".png")), width = 12, height = 8)
+```
 ```
 
 ```{r chilling_2018, eval=FALSE}
