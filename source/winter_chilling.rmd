@@ -291,6 +291,8 @@ ggsave(here(paste0("output/Historical June rainfall - Te Puke ", current_year, "
 
 ```
 
+### Five year average vs current years' chill
+
 ```{r three-sites}
 # Have to exclude 2017 data for TPK due to sensor error
 # 
@@ -357,6 +359,8 @@ ggsave(here(paste0("output/Three sites vs 5 year mean - ", current_year, ".png")
 
 ```
 
+### Seven day snapshot
+
 ```{r seven_day_snapshot}
 
 # table the increase in chill hours 
@@ -399,6 +403,8 @@ seven_day_snapshot_table %>%
 
 ```
 
+### Monthly averge temperature
+
 ```{r monthly_temps}
 
 # calculate the mean May, June & July temps for each site
@@ -406,7 +412,11 @@ seven_day_snapshot_table %>%
 
 # generate footnote for incomplete months
 current_month <- month(today())
-mjj_footnote <- paste0("Data is incomplete for ", month.name[current_month], " ", current_year)
+mjj_footnote <- ""
+
+if(current_month <= 7) {
+	mjj_footnote <- paste0("Data is incomplete for ", month.name[current_month], " ", current_year)
+}
 
 mjj_summary <- 
 	daily_met_data %>% 
@@ -460,6 +470,30 @@ mjj_summary %>%
 ggsave(here("output/Riwaka - monthly average temperature.png"), width = 12, height = 8)
 ```
 
+### May + June temperature
+
+```{r may_june_temp}
+
+mj_summary <- 
+	daily_met_data %>% 
+		filter(StationID %in% c("TPK", "RIR", "KER") & Month %in% c(5, 6) & Year >= oldest_year) %>% 
+		group_by(StationID, Year) %>% 
+		summarise(mj_mean = mean(c(TemperatureMin, TemperatureMax), na.rm = TRUE))
+
+mj_summary %>% 
+	mutate(StationID = factor(StationID, levels = c("KER", "TPK", "RIR"))) %>% 
+	ggplot() +
+		geom_point(aes(Year, mj_mean), size = 3) +
+		labs(x = "Year", y = "Mean temperature - May + June  (°C)") +
+		scale_y_continuous(breaks = seq(8, 16, by = 0.5)) +
+		scale_x_continuous(breaks = oldest_year:current_year) +
+		facet_wrap(~StationID) +
+		theme_bw()
+
+ggsave(here("output/May + June average temperature.png"), width = 12, height = 6)
+
+```
+
 ```{r monthly_chill}
 
 # be wary of using incomplete months in summary
@@ -505,6 +539,27 @@ by_site %>%
 		theme_bw()
 
 ggsave(here(paste0("output/Te Puke - total monthly chill ", current_year, ".png")), width = 12, height = 8)
+
+by_site %>% 
+	filter(StationID == "RIR" & Year >= oldest_year & Month < month(today())) %>% 
+	group_by(Year, Month) %>% 
+	summarise(total_monthly_chill = last(ChillingHoursCumulative)) %>% 
+	group_by(Month) %>% 
+	summarise(total_chill = total_monthly_chill,
+			  mean_chill = mean(total_monthly_chill[Year != current_year]), 
+			  Year = Year) %>%
+	ggplot() +
+		geom_hline(aes(yintercept = mean_chill), alpha = 0.6, colour = "darkgrey", linetype = 2) +
+		ggtitle("Riwaka total monthly chill") +
+		geom_bar(aes(Year, total_chill), stat = "identity") +
+		scale_y_continuous(breaks = seq(0, 300, by = 25), limits = c(0, 300)) +
+		scale_x_continuous(breaks = 2012:2022) +
+		facet_wrap(~Month, labeller = labeller(Month = c("5" = "May", "6" = "June", "7" = "July"))) +
+		labs(x = "", y = "Cumulative chill hours (<7°C)", caption = "dotted line shows historical monthly average") +
+		theme_bw()
+
+ggsave(here(paste0("output/Riwaka - total monthly chill ", current_year, ".png")), width = 12, height = 8)
+
 
 ```
 
