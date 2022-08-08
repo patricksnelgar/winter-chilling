@@ -45,7 +45,9 @@ met_data <-
 		   StartDate = dmy_hm(StartDate),
 		   Month = month(StopDate),
 		   Year = year(StopDate), 
-		   DayOfYear = yday(StopDate))
+		   DayOfYear = yday(StopDate)) %>% 
+	group_by(StationID) %>% 
+	arrange(StopDate)
 
 				
 
@@ -65,7 +67,9 @@ daily_met_data <-
 	mutate(StartDate = dmy(StartDate),
 		   Month = month(StartDate),
 		   Year = year(StartDate), 
-		   DayOfYear = yday(StartDate))
+		   DayOfYear = yday(StartDate)) %>% 
+	group_by(StationID) %>% 
+	arrange(StartDate)
 
 ```
 
@@ -77,12 +81,14 @@ met_data %>%
 	filter(days_missing > 0 | days_missing < -1) %>%
 	kable(caption = "Missing days check") %>% 
 	kable_styling('striped')
+
 # Check for missing hours
 # be aware of daylight savings! 0300 in 9/10th month, always has the same stop and start date, down to the hour
+# removed duplicate values from this table as well, deal with that separately 
 met_data %>%
 	group_by(StationID, Year) %>%
 	summarise(d = c(NA, diff(hour(StopDate))), date = StopDate, start_date = StartDate) %>%
-	filter(d != 1 & d != -23 & date != start_date) %>%
+	filter(d != 1 & d != -23 & date != start_date & d != 0) %>%
 	arrange(date) %>%
 	kable(caption = "Missing hours check") %>% 
 	kable_styling('striped')
@@ -109,7 +115,34 @@ daily_met_data %>%
 	filter(duplicate == 0) %>% 
 	kable(caption = "duplicate days check") %>% 
 	kable_styling('striped')
+
 ```
+
+```{r duplciate_removal, eval=FALSE}
+
+# checks to see if there are duplicates using the same grouping method for filtering duplicates.
+
+met_data %>% 
+	group_by(StationID, StopDate) %>% 
+	summarise(count = n()) %>% 
+	filter(count > 1)
+
+
+daily_met_data %>% 
+	group_by(StationID, StartDate) %>% 
+	summarise(count = n()) %>% 
+	filter(count > 1)
+
+# met_data %>% 
+# 	group_by(StationID, StopDate) %>%
+# 	slice(1)
+# 
+# daily_met_data %>% 
+# 	group_by(StationID, StartDate) %>%
+# 	slice(1)
+
+```
+
 
 ```{r graphs}
 
@@ -299,11 +332,11 @@ ggsave(here(paste0("output/Historical June rainfall - Te Puke ", current_year, "
 historical <- 
 	by_site %>%
 	mutate(doy = yday(StopDate)) %>%
-	filter(StationID %in% c("TPK", "KER", "RIR") 
+	filter(StationID %in% c("TPK", "KER", "RIR")
 		   & year(StopDate) >= current_year - 5 
-		   & !year(StopDate) == current_year
+		   & !year(StopDate) == current_year 
 		   & !(StationID == "TPK" & year(StopDate) == 2017) 
-		   & doy >= 121 & doy <= 273
+		   & doy >= 121 & doy <= 273 
 		   & year(StopDate) != current_year) %>%
 	group_by(StationID, year(StopDate)) %>%
 	mutate(chilling_hours = cumsum(IsBelowSevenC))
@@ -552,7 +585,7 @@ by_site %>%
 		geom_hline(aes(yintercept = mean_chill), alpha = 0.6, colour = "darkgrey", linetype = 2) +
 		ggtitle("Riwaka total monthly chill") +
 		geom_bar(aes(Year, total_chill), stat = "identity") +
-		scale_y_continuous(breaks = seq(0, 300, by = 25), limits = c(0, 300)) +
+		scale_y_continuous(breaks = seq(0, 1200, by = 50), limits = c(0, 1200)) +
 		scale_x_continuous(breaks = 2012:2022) +
 		facet_wrap(~Month, labeller = labeller(Month = c("5" = "May", "6" = "June", "7" = "July"))) +
 		labs(x = "", y = "Cumulative chill hours (<7°C)", caption = "dotted line shows historical monthly average") +
