@@ -735,36 +735,53 @@ api_base_url <- "https://api.metwatch.nz/"
 api_hourly_data_url <- "api/legacy/weather/hourly?station="
 
 # BP1 = Tauranga Aero
-station_id <- "BP1"
+station_id <- "KER"
 
-start_date <- "2022-05-01T08:00:00"
-end_date <- "2022-06-19T08:00:00"
+start_date <- "2022-01-01T08:00:00"
+end_date <- "2022-08-24T08:00:00"
 
 # get station & date range
-
 response <- GET(paste0(api_base_url, api_hourly_data_url, station_id, "&start=", start_date, "&stop=", end_date),
 				config = add_headers("X-Api-Key" = api_key, "Accept" = c("*/*", "application/json")))
 
 parsed_response <- content(response, "text")
 json_response <- parse_json(parsed_response, TRUE)
 
+# have to use the lubridate date interpretation in order for it to be comparable
 hourly_data <- 
-	data.frame(StationID = station_id,
-			   StopDate = as.POSIXct(json_response$STOPSTAMP, origin = ymd("1970-01-01"), tz = "NZ"),
-			   TemperatureMean = json_response$TDDATA)
+		data.frame(StationID = station_id, 
+				   StartDate = as.POSIXct(json_response$STARTSTAMP, origin = ymd("1970-01-01"), tz = "NZ"),
+				   StopDate = as.POSIXct(json_response$STOPSTAMP, origin = ymd("1970-01-01"), tz = "NZ"),
+				   TemperatureMean = json_response$TDDATA,
+				   RHMean = json_response$RHDATA,
+				   RainfallTotal = json_response$RNDATA,
+				   SolarRadiationMean = json_response$RDDATA,
+				   WindSpeedMean = json_response$WSDATA) %>% 
+		mutate(StartDate = dmy_hm(format(StartDate, "%d/%m/%Y %H:%M")),
+			   StopDate = dmy_hm(format(StopDate, "%d/%m/%Y %H:%M")))
 
 
-# now do chill things
-hourly_data %>% 
-	mutate(cumulative_chill = cumsum(ifelse(TemperatureMean< 7, 1, 0))) %>% 
-	ggplot() +
-		geom_line(aes(StopDate, cumulative_chill, colour = "Aero")) +
-		geom_line(aes(StopDate, cumulative_chill, colour = "TPK"), 
-				  data = met_data %>% 
-				  			filter(StationID == "TPK" & StopDate > ymd("2022-05-01") & StopDate < ymd("2022-06-20")) %>% 
-				  			mutate(cumulative_chill = cumsum(ifelse(TemperatureMean< 7, 1, 0)))) +
-		scale_x_datetime(breaks = pretty_breaks(10)) +
-		theme_bw()
+# join with daily download dataset
+# then check to see what doesnt match up - only use temp for now.
+tpk_data_check <- 
+	hourly_data %>% 
+	left_join(met_data, by = c("StationID", "StopDate")) %>% 
+	rename_with(.fn = function(x) { return(gsub(".y", "_new", x, ignore.case = TRUE))})
+
+
+tpk_data_check %>% 
+	select(StopDate, contains("Temp")) %>% 
+	filter(StopDate < ymd_hm("2022-08-23 08:00")) %>% 
+	rename(Temperature_old = 2, 
+		   Temperature_api_download = 3) %>%
+	mutate(StationID = "KER", 
+		   Temperature_old = format(Temperature_old, digits = 4, nsmall = 2), 
+		   Temperature_api_download = format(Temperature_api_download, digits = 4, nsmall = 2)) %>% 
+	filter(!Temperature_old == Temperature_api_download 
+		   & !is.na(Temperature_api_download)) %>% 
+	select(StationID, StopDate, Temperature_old, Temperature_api_download) %>% 
+	write_csv(here("output/ker_data_check_aug_2022.csv"))
+
 ```
 
 ```{r scratch, eval=FALSE}
