@@ -143,7 +143,6 @@ daily_met_data %>%
 
 ```
 
-
 ```{r graphs}
 
 # numeric tick points for x axis
@@ -735,10 +734,10 @@ api_base_url <- "https://api.metwatch.nz/"
 api_hourly_data_url <- "api/legacy/weather/hourly?station="
 
 # BP1 = Tauranga Aero
-station_id <- "KER"
+station_id <- "TPK"
 
-start_date <- "2022-01-01T08:00:00"
-end_date <- "2022-08-24T08:00:00"
+start_date <- "2022-09-05T08:00:00"
+end_date <- "2022-09-06T08:00:00"
 
 # get station & date range
 response <- GET(paste0(api_base_url, api_hourly_data_url, station_id, "&start=", start_date, "&stop=", end_date),
@@ -763,24 +762,23 @@ hourly_data <-
 
 # join with daily download dataset
 # then check to see what doesnt match up - only use temp for now.
-tpk_data_check <- 
+met_data_check <- 
 	hourly_data %>% 
 	left_join(met_data, by = c("StationID", "StopDate")) %>% 
 	rename_with(.fn = function(x) { return(gsub(".y", "_new", x, ignore.case = TRUE))})
 
 
-tpk_data_check %>% 
+met_data_check %>% 
 	select(StopDate, contains("Temp")) %>% 
-	filter(StopDate < ymd_hm("2022-08-23 08:00")) %>% 
+	filter(StopDate < ymd_hm("2022-08-23 08:00") & !is.na(TemperatureMean.x) & !is.na(TemperatureMean_new)) %>% 
 	rename(Temperature_old = 2, 
 		   Temperature_api_download = 3) %>%
-	mutate(StationID = "KER", 
-		   Temperature_old = format(Temperature_old, digits = 4, nsmall = 2), 
-		   Temperature_api_download = format(Temperature_api_download, digits = 4, nsmall = 2)) %>% 
-	filter(!Temperature_old == Temperature_api_download 
-		   & !is.na(Temperature_api_download)) %>% 
-	select(StationID, StopDate, Temperature_old, Temperature_api_download) %>% 
-	write_csv(here("output/ker_data_check_aug_2022.csv"))
+	mutate(StationID = "KER",
+		   Temperature_old = as.numeric(format(Temperature_old, digits = 3)),
+		   Temperature_api_download = as.numeric(format(Temperature_api_download, digits = 3)),
+		   temp_diff = Temperature_api_download - Temperature_old) %>% 
+	filter(!Temperature_old == Temperature_api_download) %>% 
+	select(StationID, StopDate, Temperature_old, Temperature_api_download, temp_diff)
 
 ```
 
@@ -882,3 +880,32 @@ met_data %>%
 		theme_bw() +
 		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ```
+
+
+```{r}
+
+hourly_data_check_new <- 
+	read_csv(here("input/Metwatch_5_sites_comparison_data.csv")) %>% 
+	rename(StationID = 1, 
+		   StopDate = 3, 
+		   TemperatureMean = 4) %>% 
+	mutate(StopDate = ymd_hms(StopDate))
+
+
+hourly_data_check_all <- 
+	hourly_data_check_new %>% 
+		left_join(met_data %>% 
+				  	rename(Temperature_old = 4) %>%
+				  	select(StationID, StopDate, Temperature_old), by = c("StationID", "StopDate"))
+
+hourly_data_check_all %>% 
+	filter(!is.na(TemperatureMean) & !is.na(Temperature_old)) %>% 
+	rename(Temperature_new = 4) %>% 
+	mutate(Temperature_new = as.numeric(format(Temperature_new, digits = 3)), 
+		   Temperature_old = as.numeric(format(Temperature_old, digits = 3)),
+		   temp_diff = Temperature_new - Temperature_old) %>% 
+	select(StationID, StopDate, contains("temp")) %>% 
+	filter(!Temperature_new == Temperature_old) 
+#	write_csv(here("output/all_sites_temp_check.csv"), na = "")
+```
+
