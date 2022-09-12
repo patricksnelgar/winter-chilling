@@ -595,6 +595,31 @@ ggsave(here(paste0("output/Riwaka - total monthly chill ", current_year, ".png")
 
 ```
 
+### Cumulative rainfall over the season
+
+```{r, season_rainfall}
+
+by_site %>% 
+	filter(StationID %in% c("TPK", "RIR", "KER") & Year >= oldest_year & Month %in% c(5:9) & !is.na(RainTotal)) %>% 
+	group_by(StationID, Year) %>% 
+	mutate(cumulative_rainfall = cumsum(RainTotal)) %>% 
+	ggplot() +
+		geom_line(aes(DayOfYear, cumulative_rainfall, colour = factor(Year))) +
+		scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black"),
+						   name = "Year") + 
+		scale_size_manual(values = c(rep(0.5, 10), 1)) +
+		scale_y_continuous(breaks = seq(0, 1500, 100), limits = c(0, 1200)) +
+		scale_x_continuous(breaks = doy_ticks, labels = month_ticks) +
+		labs(x = "", y = "Cumulative rainfall (mm)") +
+		facet_wrap(~StationID, ncol = 1, nrow = 3, labeller = labeller(StationID = c("KER" = "Kerikeri", "RIR" = "Riwaka", "TPK" = "Te Puke"))) + 
+		theme_bw() +
+		theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(here("output/Three sites - cumulative rainfall.png"), width = 8, height = 10)
+
+```
+
 ```{r chilling_2018, eval=FALSE}
 
 doy_ticks <- by_site%>%
@@ -723,6 +748,41 @@ ggsave(here("output/Winter chilling (HC-alt) - Kerikeri 2020.png"), ker_2020_gra
 
 ```
 
+```{r all_tpk_chill, eval=FALSE}
+
+all_doy_ticks <- 
+	by_site%>%
+	filter(StationID == "TPK" & (Month > 4 & Month < 10)) %$%
+	pretty(x = DayOfYear, n = 7)
+
+# labels for x axis ticks
+all_month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+
+# since we are using all available years, 
+#  run a check to make sure we are only using complete years.
+
+# colours are one value shorter for te puke with 2017 excluded,
+# need to change this back once 2017 has lapsed to keep colours aligned between sites.
+by_site %>% 
+	filter(StationID == "TPK" & (Month > 4 & Month < 10) & Year >= oldest_year & !Year == 2017) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle(paste("Cumulative chilling hours - Te Puke", current_year)) +
+			scale_y_continuous(breaks = seq(0, 1000, 50), limits = c(0,1000)) + 
+			scale_x_continuous(breaks = doy_ticks, labels = month_ticks) + 
+			theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+			labs(x = "Date", y = "Cumulative hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
+			guides(size = "none") + 
+			theme_bw()
+
+
+ggsave(here(paste0("output/Winter chilling - Te Puke ", current_year, ".png")), width = 12, height = 8)
+
+```
+
 ```{r api_scratch, eval=FALSE}
 # librarys needed for api call
 library(httr)
@@ -736,8 +796,8 @@ api_hourly_data_url <- "api/legacy/weather/hourly?station="
 # BP1 = Tauranga Aero
 station_id <- "TPK"
 
-start_date <- "2022-09-05T08:00:00"
-end_date <- "2022-09-06T08:00:00"
+start_date <- "2022-09-06T08:00:00"
+end_date <- "2022-09-07T08:00:00"
 
 # get station & date range
 response <- GET(paste0(api_base_url, api_hourly_data_url, station_id, "&start=", start_date, "&stop=", end_date),
@@ -881,8 +941,7 @@ met_data %>%
 		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ```
 
-
-```{r}
+```{r, eval=FALSE}
 
 hourly_data_check_new <- 
 	read_csv(here("input/Metwatch_5_sites_comparison_data.csv")) %>% 
