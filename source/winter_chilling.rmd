@@ -15,9 +15,6 @@ library(tidyverse)
 library(here)
 library(kableExtra)
 
-# clean up potential old or intermediary files
-unlink(here("output"), recursive = TRUE)
-
 if(!dir.exists(here("output"))) {
 	dir.create(here("output"))
 }
@@ -142,6 +139,15 @@ daily_met_data %>%
 # 	slice(1)
 
 ```
+
+
+```{r, pre_knit}
+
+# clean up potential old or intermediary files
+unlink(here("output"), recursive = TRUE)
+
+```
+
 
 ```{r graphs}
 
@@ -967,4 +973,70 @@ hourly_data_check_all %>%
 	filter(!Temperature_new == Temperature_old) 
 #	write_csv(here("output/all_sites_temp_check.csv"), na = "")
 ```
+
+```{r rainfall_5yr_tpk, eval = FALSE}
+
+# Cathy wants Jan - April daily/weekly rainfall 
+#  for the last 5 years in Te Puke.
+
+# Create a data fram with doy to date ticks
+cathy_rainfall_ticks <- 
+	met_data %>%
+	filter(StationID == "TPK" & Month %in% 1:4) %$%
+	pretty(x = DayOfYear, n = 8)
+
+# labels for x axis ticks
+cathy_month_ticks <- format(as.Date(cathy_rainfall_ticks, origin), "%b-%d")
+
+# Do daily first as it's easier.
+met_data %>% 
+	filter(StationID == "TPK" & Year %in% 2018:2022 & Month %in% 1:4) %>% 
+	group_by(Year, DayOfYear) %>% 
+	summarise(total_rainfall = sum(RainTotal)) %>% 
+	mutate(Date = as.Date(DayOfYear -1, origin = paste0(Year, "-01-01"))) %>% 
+	ggplot() +
+		geom_line(aes(DayOfYear, total_rainfall)) +
+		scale_x_continuous(breaks = cathy_rainfall_ticks, labels = cathy_month_ticks) +
+		facet_wrap(~Year) +
+		theme_bw() 
+	
+ggsave(here("output/cathy_2018-2022_daily_rainfall.png"), width = 14, height = 7)
+
+```
+
+
+```{r yearly_rainfall, eval = FALSE}
+
+met_data %>% 
+	filter(StationID == "TPK") %>% 
+	group_by(Year) %>% 
+	summarise(total_rainfall = sum(RainTotal, na.rm = TRUE)) %>% 
+	mutate(avg_rainfall = mean(total_rainfall)) %>% 
+	ggplot() +
+		geom_hline(aes(yintercept = avg_rainfall), linetype = 2) +
+		geom_col(aes(Year, total_rainfall)) +
+		scale_x_continuous(breaks = 2000:current_year) +
+		labs(x = "", y = "Total yearly rainfall (mm)") +
+		theme_bw()
+
+```
+
+
+```{r}
+# out of interest, how many rainy days have we had
+#  since the start of Helens avo sampling
+met_data %>% 
+	filter(StationID == "TPK" & StopDate >= ymd("2021-08-01")) %>% 
+	group_by(Year, DayOfYear) %>% 
+	summarise(daily_rainfall = sum(RainTotal, na.rm = TRUE)) %>% 
+	mutate(StopDate = as.Date(DayOfYear-1, origin = paste0(Year, "-01-01"))) %>% 
+	ggplot() +
+		geom_line(aes(StopDate, daily_rainfall)) +
+		scale_x_date(breaks = pretty_breaks(14)) +
+		labs(x = "", y = "Daily rainfall (mm)") +
+		theme_bw() +
+		theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+```
+
 
