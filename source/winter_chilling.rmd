@@ -140,16 +140,18 @@ daily_met_data %>%
 
 ```
 
-
 ```{r, pre_knit}
 
 # clean up potential old or intermediary files
 unlink(here("output"), recursive = TRUE)
 
+if(!dir.exists(here("output"))) {
+	dir.create(here("output"))
+}
+
 ```
 
-
-```{r graphs}
+```{r chill_graphs}
 
 # numeric tick points for x axis
 # only interested in data from April - October
@@ -285,7 +287,7 @@ ggsave(here(paste("output/Richardson Chilling hours - Riwaka", current_year, ".p
 
 ```
 
-```{r rainfall}
+```{r june_rainfall}
 
 # Select only june data
 june_rainfall <- 
@@ -798,15 +800,19 @@ library(jsonlite)
 api_key <- "hVmYq3t6w9z$C&F)J@McQfTjWnZr4u7x"
 api_base_url <- "https://api.metwatch.nz/"
 api_hourly_data_url <- "api/legacy/weather/hourly?station="
+api_daily_url <- "api/legacy/weather/daily?station="
 
 # BP1 = Tauranga Aero
 station_id <- "TPK"
 
-start_date <- "2022-09-06T08:00:00"
-end_date <- "2022-09-07T08:00:00"
+start_date <- "2022-01-01T01:00:00"
+end_date <- "2022-09-17T08:00:00"
+
+start_day <- "2022-08-06"
+end_day <- "2022-09-10"
 
 # get station & date range
-response <- GET(paste0(api_base_url, api_hourly_data_url, station_id, "&start=", start_date, "&stop=", end_date),
+response <- GET(paste0(api_base_url, api_daily_url, station_id, "&start=", start_day, "&stop=", end_day),
 				config = add_headers("X-Api-Key" = api_key, "Accept" = c("*/*", "application/json")))
 
 parsed_response <- content(response, "text")
@@ -821,7 +827,8 @@ hourly_data <-
 				   RHMean = json_response$RHDATA,
 				   RainfallTotal = json_response$RNDATA,
 				   SolarRadiationMean = json_response$RDDATA,
-				   WindSpeedMean = json_response$WSDATA) %>% 
+				   WindSpeedMean = json_response$WSDATA,
+				   SoilMoisture = json_response$) %>% 
 		mutate(StartDate = dmy_hm(format(StartDate, "%d/%m/%Y %H:%M")),
 			   StopDate = dmy_hm(format(StopDate, "%d/%m/%Y %H:%M")))
 
