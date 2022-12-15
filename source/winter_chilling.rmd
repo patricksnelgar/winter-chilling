@@ -19,6 +19,11 @@ if(!dir.exists(here("output"))) {
 	dir.create(here("output"))
 }
 
+
+if(!dir.exists(here("workspace"))) {
+	dir.create(here("workspace"))
+}
+
 source(here("source/plot-themes.R"))
 
 current_year <- as.integer(format(Sys.Date(), "%Y"))
@@ -130,13 +135,22 @@ daily_met_data %>%
 	summarise(count = n()) %>% 
 	filter(count > 1)
 
-# met_data %>% 
-# 	group_by(StationID, StopDate) %>%
-# 	slice(1)
+met_data %<>%
+	group_by(StationID, StopDate) %>%
+	slice(1)
 # 
 # daily_met_data %>% 
 # 	group_by(StationID, StartDate) %>%
 # 	slice(1)
+
+
+# after filtering write the file back to disk making sure the date format is set correctly.
+# and remove extra columns
+met_data %>% 
+	mutate(StopDate = format(StopDate, "%d/%m/%Y %H:%M"),
+		   StartDate = format(StartDate, "%d/%m/%Y %H:%M")) %>% 
+	select(-Year, -DayOfYear, -Month) %>% 
+	write_csv(here("workspace/MetWatch_Export.csv"), na = "")
 
 ```
 
@@ -1046,4 +1060,56 @@ met_data %>%
 
 ```
 
+```{r total_chill_yearly}
 
+# Only use May - August data
+by_site %>% 
+	filter(StationID == "TPK" & (Month > 4 & Month < 9) & !Year == 2017) %>%
+	group_by(Year) %>% 
+	summarise(yearly_chill = max(ChillingHoursCumulative, na.rm = TRUE)) %>% 
+		ggplot() +
+			geom_col(aes(Year, yearly_chill)) +
+			geom_smooth(aes(Year, yearly_chill), se = FALSE) +
+			scale_y_continuous(breaks = seq(0, 900, 100), labels = seq(0, 900, 100), limits = c(0,1000), expand = c(0, 0)) +
+			scale_x_continuous(breaks = 2003:2022, expand = c(0.01, 0.01)) +
+			labs(x = "", y = "Cumulative chill hours(< 7°C)", caption = "2017 data removed due to sensor error") + 
+			theme_bw() +
+			theme(text = element_text(size = 30),
+				  axis.text.x = element_text(angle = 45, hjust =1 , vjust = 1))
+
+ggsave(here("output/Te Puke - yearly chill.png"), width = 12, height = 12)
+
+```
+
+### Yearly rainfall
+
+```{r}
+
+met_data %>% 
+	filter(Year != 2003) %>% 
+	group_by(StationID, Year) %>% 
+	summarise(RainTotal = sum(RainTotal, na.rm = TRUE)) %>% 
+	ggplot() + 
+		geom_col(aes(Year, RainTotal, fill = StationID), position = position_dodge2()) +
+		scale_x_continuous(breaks = 2003:2022, labels = 2003:2022) +
+		labs(x = "Year", y = "Total rainfall (mm/y)") +
+		theme_bw() 
+
+
+met_data %>% 
+	filter(StationID == "TPK" & Year != 2003) %>% 
+	group_by(Year) %>% 
+	summarise(RainTotal = sum(RainTotal, na.rm = TRUE)) %>%
+	mutate(avg_rainfall = mean(RainTotal)) %>% 
+	ggplot() + 
+		geom_col(aes(Year, RainTotal), position = position_dodge2()) +
+		geom_text(aes(x = 2002, y = avg_rainfall + 40, label = format(avg_rainfall, digits = 3)), colour = "red", size = 8) +
+		geom_hline(aes(yintercept = avg_rainfall), linetype = 2, alpha = 0.6) +
+		scale_x_continuous(breaks = 2003:2022, labels = 2003:2022) +
+		ggtitle("Te Puke Yearly rainfall") +
+		labs(x = "Year", y = "Total rainfall (mm/y)") +
+		theme_bw() 
+```
+
+
+ 
