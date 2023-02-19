@@ -1111,5 +1111,111 @@ met_data %>%
 		theme_bw() 
 ```
 
+```{r 2023_HC_report, eval=FALSE}
+
+
+month_ticks <- 
+	by_site %>% 
+	filter(StationID == "TPK" & DayOfYear %in% yday(c("2022-05-01", "2022-06-01", "2022-07-01", "2022-08-01"))) %>% 
+	group_by(month(StopDate)) %>% 
+	arrange(desc(StopDate)) %>% 
+	slice(1) %$% 
+	DayOfYear
+
+# labels for x axis ticks
+month_labels <- format(as.Date(month_ticks, origin), "%b")
+
+# colours are one value shorter for te puke with 2017 excluded,
+# need to change this back once 2017 has lapsed to keep colours aligned between sites.
+by_site %>% 
+	filter(StationID == "TPK" & (Month > 4 & Month < 8) & Year >= oldest_year & !Year == 2017) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 8),1, 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange",
+										  "forestgreen", "darkturquoise", "green", "black", "black")) + 
+			ggtitle(paste("Cumulative chilling hours - Te Puke 2022")) +
+			scale_y_continuous(breaks = seq(0, 600, 50), limits = c(0,600)) + 
+			scale_x_continuous(breaks = month_ticks, labels = month_labels) + 
+			labs(x = "", y = "Cumulative chilling hours (<7°C)", colour = "Year", caption = "2017 is excluded due to sensor error") + 
+			guides(size = "none") + 
+			theme_bw() +
+			theme(text = element_text(size = 20),
+				  legend.position = c(0.1, 0.75), 
+				  legend.background = element_rect(colour = "black"),
+				  panel.grid.minor.y = element_blank())
+
+ggsave(here("output/Te Puke winter chill for HC alts report 2023.png"), width = 8, height = 8)
+
+by_site %>% 
+	filter(StationID == "KER" & (Month > 4 & Month < 8) & Year >= oldest_year) %>%
+		ggplot() +
+			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), size = factor(Year))) + 
+			scale_size_manual(values = c(rep(0.5, 9), 1)) + 
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
+			ggtitle(paste("Cumulative chilling hours - Kerikeri 2022")) +
+			scale_y_continuous(breaks = seq(0, 600, 50), limits = c(0,600)) + 
+			scale_x_continuous(breaks = month_ticks, labels = month_labels) + 
+			labs(x = "", y = "Cumulative chilling hours (<7°C)", colour = "Year") + 
+			guides(size = "none") + 
+			theme_bw() +
+			theme(text = element_text(size = 20),
+				  legend.position = c(0.1, 0.75), 
+				  legend.background = element_rect(colour = "black"),
+				  panel.grid.minor.y = element_blank())
+
+ggsave(here("output/Kerikeri winter chill for HC alts report 2023.png"), width = 8, height = 8)
+
+historical <- 
+	by_site %>%
+	mutate(doy = yday(StopDate)) %>%
+	filter(StationID %in% c("TPK", "KER")
+		   & year(StopDate) >= current_year - 5 
+		   & !year(StopDate) == current_year 
+		   & !(StationID == "TPK" & year(StopDate) == 2017) 
+		   & doy >= 121 & doy <= 213 
+		   & year(StopDate) != current_year) %>%
+	group_by(StationID, year(StopDate)) %>%
+	mutate(chilling_hours = cumsum(IsBelowSevenC))
+
+five_year_chill <- 
+	historical %>%
+	group_by(StationID, Year, doy) %>%
+	arrange(doy) %>% 
+	summarise(day_chill = max(chilling_hours, na.rm = TRUE)) %>%
+	group_by(StationID, doy) %>%
+	summarise(historical_chill_hours = mean(day_chill))
+
+
+historical_ticks <- 
+	as.Date(seq(min(five_year_chill$doy) - 1, max(five_year_chill$doy), by = 7,), origin = "2021-01-01")
+
+chill_colours <- brewer_pal("qual", 7, 1)(7)
+
+by_site %>%
+	filter(StationID %in% c("TPK", "KER")
+		   & Year == 2022 
+		   & DayOfYear >= 121 & DayOfYear <= 213) %>%
+	ggplot() +
+		geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = StationID)) +
+		geom_line(aes(doy, historical_chill_hours, colour = "5 year mean"), data = five_year_chill) + 
+		facet_wrap(~StationID, labeller = labeller(StationID = c("KER" = "Kerikeri", "TPK" = "Te Puke"))) + 
+		scale_y_continuous(breaks = seq(0, 600, 50), limits = c(0, 600)) +
+		scale_x_continuous(breaks = month_ticks, labels = month_labels) +
+		scale_colour_manual(values = c("5 year mean" = "black", "TPK" = chill_colours[5], "KER" = chill_colours[2]), 
+							labels = c("KER" = "Kerikeri", "TPK" = "Te Puke")) +
+		labs(colour = "Site", x = "", y = "Cumulative chilling hours (<7°C)") +
+		ggtitle(paste("Cumulative chilling hours vs 5 year mean - 2022")) +
+		theme_bw() +
+		theme(text = element_text(size = 18), 
+			  legend.background = element_rect(colour = "black"),
+			  legend.position = c(0.1, 0.85), 
+			  legend.title = element_blank(),
+			  panel.grid.minor.y = element_blank())
+
+ggsave(here(paste0("output/Kerikeri and Te Puke 2022 winter chill vs 5 year mean.png")), width = 10, height = 6)
+
+```
 
  
