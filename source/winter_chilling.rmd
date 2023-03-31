@@ -1218,4 +1218,54 @@ ggsave(here(paste0("output/Kerikeri and Te Puke 2022 winter chill vs 5 year mean
 
 ```
 
+```{r chill_hour_trend}
+
+by_site %>% 
+	filter(StationID == "TPK" & Month > 4 & Month < 8 & Year != 2017) %>% 
+	group_by(Year) %>% 
+	arrange(desc(ChillingHoursCumulative)) %>% 
+	slice(1) %>% 
+	ggplot() +
+		geom_bar(aes(Year, ChillingHoursCumulative), stat = "identity") +
+		scale_x_continuous(breaks = seq(2002, 2023, 2)) +
+		scale_y_continuous(breaks = seq(0,800,100), 
+						   limits = c(0,800), 
+						   expand = c(0, 0)) +
+		ggtitle("Te Puke winter chill - May to July") +
+		labs(caption = "2017 excluded due to sensor error") +
+		labs(x = "", y = "Cumulative chill hours (<7°C)") +
+		theme_bw() 
+
+ggsave(here("output/Te Puke winter chill trend.png"), width = 6, height = 4)
+
+
+by_site %>% 
+	filter(StationID == "TPK" & Month > 4 & Month < 8 & Year != 2017) %>% 
+	group_by(Year) %>% 
+	arrange(desc(ChillingHoursCumulative)) %>% 
+	slice(1) %>% 
+	ggplot() +
+		geom_bar(aes(Year, ChillingHoursCumulative), stat = "identity") +
+		geom_smooth(aes(Year, ChillingHoursCumulative), se = FALSE) +
+		scale_x_continuous(breaks = seq(2002, 2023, 2)) +
+		scale_y_continuous(breaks = seq(0,800,100), 
+						   limits = c(0,800), 
+						   expand = c(0, 0)) +
+		ggtitle("Te Puke winter chill - May to July") +
+		labs(caption = "2017 excluded due to sensor error") +
+		labs(x = "", y = "Cumulative chill hours (<7°C)") +
+		theme_bw() 
+
+ggsave(here("output/Te Puke winter chill trend with fit.png"), width = 6, height = 4)
+
+```
+
+
+```{r scratch, eval=FALSE, include=FALSE}
+met_data %>% 
+	filter(StationID == "TPK" & StopDate > ymd("2023-01-29") & StopDate < ymd("2023-02-18")) %>% 
+	mutate(StopDate = format(StopDate, "%Y-%m-%d %H:%M:%S")) %>% 
+	write_csv(here("workspace/tepuke-feb-met-data.csv"), na = "")
+```
+
  
