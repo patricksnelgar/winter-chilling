@@ -76,9 +76,21 @@ daily_met_data <-
 	group_by(StationID) %>% 
 	arrange(StartDate)
 
+
+# numeric tick points for x axis
+# only interested in data from April - October
+doy_ticks <- 
+	by_site%>%
+	filter(StationID == "TPK" & (Month > 4 & Month < 10)) %$%
+	pretty(x = DayOfYear, n = 7)
+
+# labels for x axis ticks
+month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
+
 ```
 
 ```{r data_check, eval=FALSE}
+
 # Check for missing days
 met_data %>%
 	group_by(StationID, Year) %>%
@@ -119,6 +131,30 @@ daily_met_data %>%
 	reframe(duplicate = c(NA, diff(yday(StartDate))), date = StartDate) %>% 
 	filter(duplicate == 0) %>% 
 	kable(caption = "duplicate days check") %>% 
+	kable_styling('striped')
+
+# get the max date for both daily and hourly data
+hourly_max_dates <- 
+	met_data %>% 
+	filter(!is.na(StopDate)) %>% 
+	group_by(StationID) %>% 
+	arrange(desc(StopDate)) %>% 
+	slice(1) %>% 
+	select(StationID, StopDate) %>% 
+	rename(Hourly_max = StopDate)
+
+daily_max_dates <- 
+	daily_met_data %>% 
+	filter(!is.na(StartDate)) %>% 
+	group_by(StationID) %>% 
+	arrange(desc(StartDate)) %>% 
+	slice(1) %>% 
+	select(StationID, StartDate) %>% 
+	rename(Daily_max = StartDate)
+
+hourly_max_dates %>% 
+	left_join(daily_max_dates, by = "StationID") %>% 
+	kable() %>% 
 	kable_styling('striped')
 
 ```
@@ -175,17 +211,6 @@ if(!dir.exists(here("output"))) {
 ```
 
 ```{r chill_graphs}
-
-# numeric tick points for x axis
-# only interested in data from April - October
-doy_ticks <- 
-	by_site%>%
-	filter(StationID == "TPK" & (Month > 4 & Month < 10)) %$%
-	pretty(x = DayOfYear, n = 7)
-
-# labels for x axis ticks
-month_ticks <- format(as.Date(doy_ticks, origin), "%b-%d")
-
 # colours are one value shorter for te puke with 2017 excluded,
 # need to change this back once 2017 has lapsed to keep colours aligned between sites.
 by_site %>% 
@@ -942,7 +967,7 @@ met_data %>%
 	filter(StationID == "TPK") %>% 
 	group_by(Year) %>% 
 	summarise(total_rainfall = sum(RainTotal, na.rm = TRUE), num_obs = n()) %>% 
-	filter(num_obs > 8700 | Year == current_year) %>% 
+	filter(num_obs > 8650 | Year == current_year) %>% 
 	mutate(avg_rainfall = mean(total_rainfall)) %>% 
 	ggplot() +
 		geom_hline(aes(yintercept = avg_rainfall), linetype = 2) +
@@ -1235,6 +1260,86 @@ cathy_all_plots <-
 
 ggsave(here("output/cathy/nov-march-all-daily-plots.jpg"), cathy_all_plots, width = 8, height = 12)
 
+
+# temperature, humidty and rainfall for 2018 - 2022 seasons
+# October to May
+cathy_pathogen_daily_summary <- 
+	met_data %>% 
+	filter(StationID == "TPK" & 
+		   	Month %in% c(10:12, 1:6) & 
+		   	Year %in% 2017:2023 & 
+		   	StopDate > ym("2017-09")) %>% 
+	select(StopDate, TemperatureMean, RelativeHumidityMean, RainTotal) %>% 
+	mutate(Date = format(StopDate, "%Y-%m-%d")) %>% 
+	group_by(Date) %>% 
+	summarise(TemperatureMean = mean(TemperatureMean, na.rm = TRUE),
+			  RelativeHumidityMean = mean(RelativeHumidityMean, na.rm = TRUE),
+			  RainfallTotal = sum(RainTotal, na.rm = TRUE)) %>% 
+	mutate(season = case_when(Date > ym("2017-09") & Date <= ymd("2018-06-01") ~ "season 17 - 18",
+							  Date > ym("2018-09") & Date <= ymd("2019-06-01") ~ "season 18 - 19",
+							  Date > ym("2019-09") & Date <= ymd("2020-06-01") ~ "season 19 - 20",
+							  Date > ym("2020-09") & Date <= ymd("2021-06-01") ~ "season 20 - 21",
+							  Date > ym("2021-09") & Date <= ymd("2022-06-01") ~ "season 21 - 22",
+							  Date > ym("2022-09") & Date <= ymd("2023-06-01") ~ "season 22 - 23"),
+		   doy = yday(Date)) %>% 
+	filter(!is.na(season)) %>% 
+	group_by(season) %>% 
+	arrange(Date) %>% 
+	mutate(aligned_id = 1:n())
+
+label_info <- 
+	cathy_pathogen_daily_summary %>% 
+	filter(season == "season 17 - 18") %>% 
+	select(Date, doy, aligned_id) %>% 
+	group_by(month(Date)) %>% 
+	slice(1)
+
+label_breaks <- label_info$aligned_id
+
+label_text <- format(ymd(label_info$Date), "%b-%d")
+
+library(cowplot)
+
+for(s in unique(cathy_pathogen_daily_summary$season)) {
+
+	(print(s))
+	
+	data <- 
+		cathy_pathogen_daily_summary %>% 
+		filter(season == s)
+	
+	a <- data %>% 
+		ggplot() +
+			geom_line(aes(aligned_id, TemperatureMean), colour = "tomato") +
+			scale_y_continuous(breaks = seq(0, 36, 2), limits = c(0, 28)) +
+			scale_x_continuous(breaks = label_breaks, labels = label_text) +
+			labs(y = "Mean daily temperature (°C)", x = "") +
+			theme_bw()
+	
+	b <- data %>% 
+		ggplot() +
+			geom_line(aes(aligned_id, RelativeHumidityMean), colour = "dodgerblue") +
+			scale_y_continuous(breaks = seq(0, 100, 10), limits = c(0,105)) +
+			scale_x_continuous(breaks = label_breaks, labels = label_text) +
+			labs(y = "Mean daily RH (%)", x = "") +
+			theme_bw()
+	
+	c <- data %>% 
+		ggplot() +
+			geom_col(aes(aligned_id, RainfallTotal), fill = "skyblue") +
+			scale_y_continuous(breaks = seq(0, 400, 20), limits = c(0, 130)) +
+			scale_x_continuous(breaks = label_breaks, labels = label_text) +
+			labs(y = "Total daily rainfall (mm)", x = "") +
+			theme_bw()
+	
+	title <- ggdraw() + draw_label(s, x = 0.2, hjust = 0)
+	
+	plot_grid(title, a, b, c, ncol = 1, rel_heights = c(0.1, 1, 1, 1))
+	
+	ggsave(here(paste0("output/cathy/", s, " - triple plot.png")), width = 8, height = 12, bg = "white")
+		
+}
+	
 ```
 
 ```{r scratch, eval=FALSE, include=FALSE}
