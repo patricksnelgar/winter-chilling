@@ -218,7 +218,7 @@ by_site %>%
 		ggplot() +
 			geom_line(aes(DayOfYear, ChillingHoursCumulative, colour = factor(Year), linewidth = factor(Year))) + 
 			scale_linewidth_manual(values = c(rep(0.5, 9), 1)) + 
-			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "orange",
+			scale_color_manual(values = c("red", "blue", "gold","darkcyan", "purple",
 										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) + 
 			ggtitle(paste("Cumulative chilling hours - Te Puke", current_year)) +
 			scale_y_continuous(breaks = seq(0, 1000, 50), limits = c(0,1000)) + 
@@ -960,6 +960,33 @@ ggsave(here("output/cathy_2018-2022_daily_rainfall.png"), width = 14, height = 7
 
 ```
 
+#### Rainfall by calander year
+
+```{r}
+
+first_of_month_dates <- ymd(paste0("2023-", 1:12, "-01"))
+first_of_month_doy <- yday(first_of_month_dates)
+
+
+met_data %>% 
+	filter(StationID %in% c("TPK", "KER", "RIR") & Year > current_year - 11) %>% 
+	group_by(StationID, Year, DayOfYear) %>% 
+	summarise(daily_rainfall = sum(RainTotal, na.rm = TRUE)) %>% 
+	mutate(cumulative_rainfall = cumsum(daily_rainfall)) %>% 
+	ggplot() +
+		geom_line(aes(DayOfYear, cumulative_rainfall, colour = factor(Year))) +
+		labs(x = "", y = "Total rainfall (mm)", colour = "Year", linewidth = "") +
+		scale_linewidth_manual(values = c(rep(0.5, 10), 1)) +
+		scale_colour_manual(values = c("red", "blue", "gold","darkcyan", "orange", "purple",
+										  "forestgreen", "darkturquoise", "green", "cornflowerblue", "black")) +
+		scale_x_continuous(breaks = first_of_month_doy, labels = format(first_of_month_dates, "%b-%d"), limits = c(0,365)) +
+		facet_wrap(~StationID, ncol = 1) +
+		theme_bw() +
+		theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust = 1))
+
+ggsave(here("output/cumulative-rainfall-by-calendar-year.jpg"), width = 8, height = 8)
+
+```
 
 ```{r yearly_rainfall, eval = FALSE}
 
